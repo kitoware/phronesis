@@ -29,17 +29,20 @@ export const list = query({
       return [];
     }
 
-    let query = ctx.db.query("bookmarks");
-
     if (args.itemType) {
-      query = query.withIndex("by_user_and_type", (q) =>
-        q.eq("userId", user._id).eq("itemType", args.itemType!)
-      );
-    } else {
-      query = query.withIndex("by_user", (q) => q.eq("userId", user._id));
+      return await ctx.db
+        .query("bookmarks")
+        .withIndex("by_user_and_type", (q) =>
+          q.eq("userId", user._id).eq("itemType", args.itemType!)
+        )
+        .order("desc")
+        .take(args.limit ?? 50);
     }
-
-    return await query.order("desc").take(args.limit ?? 50);
+    return await ctx.db
+      .query("bookmarks")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(args.limit ?? 50);
   },
 });
 

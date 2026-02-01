@@ -1,5 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { action, internalQuery, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
 
 export const getByPaperId = query({
   args: { paperId: v.id("papers") },
@@ -23,20 +25,40 @@ export const list = query({
   },
 });
 
-export const searchSimilar = query({
+// Internal query to fetch insights by IDs for vector search results
+export const getByIds = internalQuery({
+  args: { ids: v.array(v.id("insights")) },
+  handler: async (ctx, args) => {
+    const insights = await Promise.all(args.ids.map((id) => ctx.db.get(id)));
+    return insights.filter((i) => i !== null);
+  },
+});
+
+export const searchSimilar = action({
   args: {
     embedding: v.array(v.float64()),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
-    const results = await ctx.db
-      .query("insights")
-      .withIndex("vector_insights", (q) =>
-        q.eq("embedding", args.embedding as number[])
-      )
-      .take(args.limit ?? 10);
+  handler: async (ctx, args): Promise<(Doc<"insights"> & { _score: number })[]> => {
+    const vectorResults = await ctx.vectorSearch("insights", "vector_insights", {
+      vector: args.embedding,
+      limit: args.limit ?? 10,
+    });
 
-    return results;
+    // Fetch full documents
+    const ids = vectorResults.map((r) => r._id);
+    const insights = (await ctx.runQuery(internal.insights.getByIds, {
+      ids,
+    })) as Doc<"insights">[];
+
+    // Create a map of scores
+    const scoreMap = new Map(vectorResults.map((r) => [r._id, r._score]));
+
+    // Return with scores
+    return insights.map((i) => ({
+      ...i,
+      _score: scoreMap.get(i._id) ?? 0,
+    }));
   },
 });
 

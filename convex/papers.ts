@@ -16,19 +16,16 @@ export const list = query({
     cursor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("papers");
-
     if (args.status) {
-      query = query.withIndex("by_processing_status", (q) =>
-        q.eq("processingStatus", args.status!)
-      );
+      return await ctx.db
+        .query("papers")
+        .withIndex("by_processing_status", (q) =>
+          q.eq("processingStatus", args.status!)
+        )
+        .order("desc")
+        .take(args.limit ?? 20);
     }
-
-    const papers = await query
-      .order("desc")
-      .take(args.limit ?? 20);
-
-    return papers;
+    return await ctx.db.query("papers").order("desc").take(args.limit ?? 20);
   },
 });
 

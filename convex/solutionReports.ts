@@ -9,13 +9,17 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("solutionReports");
-
     if (args.status) {
-      query = query.withIndex("by_status", (q) => q.eq("status", args.status!));
+      return await ctx.db
+        .query("solutionReports")
+        .withIndex("by_status", (q) => q.eq("status", args.status!))
+        .order("desc")
+        .take(args.limit ?? 20);
     }
-
-    return await query.order("desc").take(args.limit ?? 20);
+    return await ctx.db
+      .query("solutionReports")
+      .order("desc")
+      .take(args.limit ?? 20);
   },
 });
 

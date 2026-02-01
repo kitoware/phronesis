@@ -1,99 +1,60 @@
 /* eslint-disable */
 /**
- * Generated Convex data model types - placeholder file.
+ * Generated data model types.
  *
- * Run `npx convex dev` to generate the actual types.
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
  */
 
+import type {
+  DataModelFromSchemaDefinition,
+  DocumentByName,
+  TableNamesInDataModel,
+  SystemTableNames,
+} from "convex/server";
 import type { GenericId } from "convex/values";
+import schema from "../schema.js";
 
-export type TableNames =
-  | "papers"
-  | "paperContent"
-  | "insights"
-  | "diagrams"
-  | "trends"
-  | "startups"
-  | "startupProblems"
-  | "founders"
-  | "implicitSignals"
-  | "researchLinks"
-  | "solutionReports"
-  | "users"
-  | "bookmarks"
-  | "agentRuns";
+/**
+ * The names of all of your Convex tables.
+ */
+export type TableNames = TableNamesInDataModel<DataModel>;
 
-export type Id<TableName extends TableNames> = GenericId<TableName>;
+/**
+ * The type of a document stored in Convex.
+ *
+ * @typeParam TableName - A string literal type of the table name (like "users").
+ */
+export type Doc<TableName extends TableNames> = DocumentByName<
+  DataModel,
+  TableName
+>;
 
-export type DataModel = {
-  papers: {
-    _id: Id<"papers">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  paperContent: {
-    _id: Id<"paperContent">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  insights: {
-    _id: Id<"insights">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  diagrams: {
-    _id: Id<"diagrams">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  trends: {
-    _id: Id<"trends">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  startups: {
-    _id: Id<"startups">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  startupProblems: {
-    _id: Id<"startupProblems">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  founders: {
-    _id: Id<"founders">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  implicitSignals: {
-    _id: Id<"implicitSignals">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  researchLinks: {
-    _id: Id<"researchLinks">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  solutionReports: {
-    _id: Id<"solutionReports">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  users: {
-    _id: Id<"users">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  bookmarks: {
-    _id: Id<"bookmarks">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-  agentRuns: {
-    _id: Id<"agentRuns">;
-    _creationTime: number;
-    [key: string]: unknown;
-  };
-};
+/**
+ * An identifier for a document in Convex.
+ *
+ * Convex documents are uniquely identified by their `Id`, which is accessible
+ * on the `_id` field. To learn more, see [Document IDs](https://docs.convex.dev/using/document-ids).
+ *
+ * Documents can be loaded using `db.get(tableName, id)` in query and mutation functions.
+ *
+ * IDs are just strings at runtime, but this type can be used to distinguish them from other
+ * strings when type checking.
+ *
+ * @typeParam TableName - A string literal type of the table name (like "users").
+ */
+export type Id<TableName extends TableNames | SystemTableNames> =
+  GenericId<TableName>;
+
+/**
+ * A type describing your Convex data model.
+ *
+ * This type includes information about what tables you have, the type of
+ * documents stored in those tables, and the indexes defined on them.
+ *
+ * This type is used to parameterize methods like `queryGeneric` and
+ * `mutationGeneric` to make them type-safe.
+ */
+export type DataModel = DataModelFromSchemaDefinition<typeof schema>;

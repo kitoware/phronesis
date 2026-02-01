@@ -15,15 +15,14 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("trends");
-
     if (args.category) {
-      query = query.withIndex("by_category", (q) =>
-        q.eq("category", args.category!)
-      );
+      return await ctx.db
+        .query("trends")
+        .withIndex("by_category", (q) => q.eq("category", args.category!))
+        .order("desc")
+        .take(args.limit ?? 20);
     }
-
-    return await query.order("desc").take(args.limit ?? 20);
+    return await ctx.db.query("trends").order("desc").take(args.limit ?? 20);
   },
 });
 
@@ -98,15 +97,17 @@ export const getCategories = query({
 export const getTopics = query({
   args: { category: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("trends");
+    let trends;
 
     if (args.category) {
-      query = query.withIndex("by_category", (q) =>
-        q.eq("category", args.category!)
-      );
+      trends = await ctx.db
+        .query("trends")
+        .withIndex("by_category", (q) => q.eq("category", args.category!))
+        .collect();
+    } else {
+      trends = await ctx.db.query("trends").collect();
     }
 
-    const trends = await query.collect();
     const topics = [...new Set(trends.map((t) => t.topic))];
     return topics.sort();
   },

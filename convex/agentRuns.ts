@@ -25,17 +25,21 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("agentRuns");
-
     if (args.agentType) {
-      query = query.withIndex("by_agent_type", (q) =>
-        q.eq("agentType", args.agentType!)
-      );
-    } else if (args.status) {
-      query = query.withIndex("by_status", (q) => q.eq("status", args.status!));
+      return await ctx.db
+        .query("agentRuns")
+        .withIndex("by_agent_type", (q) => q.eq("agentType", args.agentType!))
+        .order("desc")
+        .take(args.limit ?? 50);
     }
-
-    return await query.order("desc").take(args.limit ?? 50);
+    if (args.status) {
+      return await ctx.db
+        .query("agentRuns")
+        .withIndex("by_status", (q) => q.eq("status", args.status!))
+        .order("desc")
+        .take(args.limit ?? 50);
+    }
+    return await ctx.db.query("agentRuns").order("desc").take(args.limit ?? 50);
   },
 });
 

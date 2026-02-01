@@ -17,21 +17,34 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("researchLinks");
+    let results;
 
     if (args.problemId) {
-      query = query.withIndex("by_problem", (q) =>
-        q.eq("problemId", args.problemId!)
-      );
+      results = await ctx.db
+        .query("researchLinks")
+        .withIndex("by_problem", (q) => q.eq("problemId", args.problemId!))
+        .order("desc")
+        .take(args.limit ?? 50);
     } else if (args.paperId) {
-      query = query.withIndex("by_paper", (q) => q.eq("paperId", args.paperId!));
+      results = await ctx.db
+        .query("researchLinks")
+        .withIndex("by_paper", (q) => q.eq("paperId", args.paperId!))
+        .order("desc")
+        .take(args.limit ?? 50);
     } else if (args.reviewStatus) {
-      query = query.withIndex("by_review_status", (q) =>
-        q.eq("reviewStatus", args.reviewStatus!)
-      );
+      results = await ctx.db
+        .query("researchLinks")
+        .withIndex("by_review_status", (q) =>
+          q.eq("reviewStatus", args.reviewStatus!)
+        )
+        .order("desc")
+        .take(args.limit ?? 50);
+    } else {
+      results = await ctx.db
+        .query("researchLinks")
+        .order("desc")
+        .take(args.limit ?? 50);
     }
-
-    let results = await query.order("desc").take(args.limit ?? 50);
 
     if (args.minRelevance !== undefined) {
       results = results.filter((r) => r.relevanceScore >= args.minRelevance!);

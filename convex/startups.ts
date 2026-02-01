@@ -19,15 +19,16 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("startups");
-
     if (args.fundingStage) {
-      query = query.withIndex("by_funding_stage", (q) =>
-        q.eq("fundingStage", args.fundingStage!)
-      );
+      return await ctx.db
+        .query("startups")
+        .withIndex("by_funding_stage", (q) =>
+          q.eq("fundingStage", args.fundingStage!)
+        )
+        .order("desc")
+        .take(args.limit ?? 20);
     }
-
-    return await query.order("desc").take(args.limit ?? 20);
+    return await ctx.db.query("startups").order("desc").take(args.limit ?? 20);
   },
 });
 
