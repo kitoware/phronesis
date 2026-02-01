@@ -12,6 +12,9 @@ import {
   Link2,
   Settings,
   Home,
+  Bot,
+  ListTodo,
+  ShieldCheck,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -25,7 +28,15 @@ const navigation = [
   { name: "Links", href: "/links", icon: Link2 },
 ];
 
-const secondaryNavigation = [{ name: "Settings", href: "/settings", icon: Settings }];
+const agentNavigation = [
+  { name: "Overview", href: "/agents", icon: Bot },
+  { name: "Tasks", href: "/agents/tasks", icon: ListTodo },
+  { name: "Approvals", href: "/agents/approvals", icon: ShieldCheck },
+];
+
+const secondaryNavigation = [
+  { name: "Settings", href: "/settings", icon: Settings },
+];
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -64,6 +75,34 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        <div className="mt-8">
+          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Agents
+          </p>
+          <nav className="space-y-1">
+            {agentNavigation.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href === "/agents" && pathname === "/agents");
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-secondary text-secondary-foreground"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-secondary-foreground"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
         <div className="mt-8">
           <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

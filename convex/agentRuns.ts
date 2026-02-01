@@ -39,7 +39,10 @@ export const list = query({
         .order("desc")
         .take(args.limit ?? 50);
     }
-    return await ctx.db.query("agentRuns").order("desc").take(args.limit ?? 50);
+    return await ctx.db
+      .query("agentRuns")
+      .order("desc")
+      .take(args.limit ?? 50);
   },
 });
 
@@ -186,8 +189,10 @@ export const getStats = query({
     );
     const avgDuration =
       completedRuns.length > 0
-        ? completedRuns.reduce((acc, r) => acc + (r.metrics?.duration ?? 0), 0) /
-          completedRuns.length
+        ? completedRuns.reduce(
+            (acc, r) => acc + (r.metrics?.duration ?? 0),
+            0
+          ) / completedRuns.length
         : 0;
 
     return {
@@ -196,5 +201,108 @@ export const getStats = query({
       byStatus,
       avgDuration,
     };
+  },
+});
+
+export const getLatestStatus = query({
+  args: {
+    agentType: v.union(
+      v.literal("research-ingestion"),
+      v.literal("insight-generation"),
+      v.literal("trend-analysis"),
+      v.literal("problem-discovery"),
+      v.literal("research-linking"),
+      v.literal("solution-synthesis")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const latest = await ctx.db
+      .query("agentRuns")
+      .withIndex("by_agent_type", (q) => q.eq("agentType", args.agentType))
+      .order("desc")
+      .first();
+
+    if (!latest) {
+      return { status: "idle" as const, lastRun: null };
+    }
+
+    return {
+      status: latest.status,
+      lastRun: latest,
+    };
+  },
+});
+
+export const countToday = query({
+  args: {
+    agentType: v.optional(
+      v.union(
+        v.literal("research-ingestion"),
+        v.literal("insight-generation"),
+        v.literal("trend-analysis"),
+        v.literal("problem-discovery"),
+        v.literal("research-linking"),
+        v.literal("solution-synthesis")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDayTs = startOfDay.getTime();
+
+    let runs;
+    if (args.agentType) {
+      runs = await ctx.db
+        .query("agentRuns")
+        .withIndex("by_agent_type", (q) => q.eq("agentType", args.agentType!))
+        .collect();
+    } else {
+      runs = await ctx.db.query("agentRuns").collect();
+    }
+
+    return runs.filter((r) => r.createdAt >= startOfDayTs).length;
+  },
+});
+
+export const getAllLatestStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const agentTypes = [
+      "research-ingestion",
+      "insight-generation",
+      "trend-analysis",
+      "problem-discovery",
+      "research-linking",
+      "solution-synthesis",
+    ] as const;
+
+    const statuses: Record<
+      string,
+      { status: string; lastRun: Awaited<ReturnType<typeof ctx.db.get>> | null }
+    > = {};
+
+    for (const agentType of agentTypes) {
+      const latest = await ctx.db
+        .query("agentRuns")
+        .withIndex("by_agent_type", (q) => q.eq("agentType", agentType))
+        .order("desc")
+        .first();
+
+      statuses[agentType] = latest
+        ? { status: latest.status, lastRun: latest }
+        : { status: "idle", lastRun: null };
+    }
+
+    return statuses;
+  },
+});
+
+export const setAwaitingApproval = mutation({
+  args: { id: v.id("agentRuns") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      status: "awaiting_approval",
+    });
   },
 });

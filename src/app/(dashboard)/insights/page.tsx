@@ -9,8 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ConvexInsight } from "@/types/convex";
 
 export default function InsightsPage() {
-  const insights = useQuery(api.insights.list, { limit: 20 }) as ConvexInsight[] | undefined;
-  const stats = useQuery(api.insights.getStats) as { total: number; avgKeyFindings: number } | undefined;
+  const insights = useQuery(api.insights.list, { limit: 20 }) as
+    | ConvexInsight[]
+    | undefined;
+  const stats = useQuery(api.insights.getStats) as
+    | { total: number; avgKeyFindings: number }
+    | undefined;
 
   const isLoading = insights === undefined;
 
@@ -24,7 +28,9 @@ export default function InsightsPage() {
       <div className="mb-6 grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Insights</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Insights
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.total ?? 0}</div>
@@ -32,7 +38,9 @@ export default function InsightsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Key Findings</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Avg. Key Findings
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -69,13 +77,15 @@ export default function InsightsPage() {
                 >
                   <p className="mb-2">{insight.summary}</p>
                   <div className="flex flex-wrap gap-2">
-                    {insight.keyFindings.slice(0, 3).map((finding: string, i: number) => (
-                      <Badge key={i} variant="secondary">
-                        {finding.length > 50
-                          ? finding.slice(0, 50) + "..."
-                          : finding}
-                      </Badge>
-                    ))}
+                    {insight.keyFindings
+                      .slice(0, 3)
+                      .map((finding: string, i: number) => (
+                        <Badge key={i} variant="secondary">
+                          {finding.length > 50
+                            ? finding.slice(0, 50) + "..."
+                            : finding}
+                        </Badge>
+                      ))}
                     {insight.keyFindings.length > 3 && (
                       <Badge variant="outline">
                         +{insight.keyFindings.length - 3} more

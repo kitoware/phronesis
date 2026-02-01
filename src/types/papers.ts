@@ -1,6 +1,10 @@
 import { Id } from "../../convex/_generated/dataModel";
 
-export type ProcessingStatus = "pending" | "processing" | "completed" | "failed";
+export type ProcessingStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
 
 export interface Author {
   name: string;

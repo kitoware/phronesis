@@ -8,10 +8,7 @@ export function useAuth() {
   const { user: clerkUser, isLoaded: isClerkLoaded, isSignedIn } = useUser();
   const { signOut } = useClerkAuth();
 
-  const convexUser = useQuery(
-    api.users.getCurrent,
-    isSignedIn ? {} : "skip"
-  );
+  const convexUser = useQuery(api.users.getCurrent, isSignedIn ? {} : "skip");
 
   return {
     user: convexUser,

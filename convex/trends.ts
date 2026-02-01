@@ -22,7 +22,10 @@ export const list = query({
         .order("desc")
         .take(args.limit ?? 20);
     }
-    return await ctx.db.query("trends").order("desc").take(args.limit ?? 20);
+    return await ctx.db
+      .query("trends")
+      .order("desc")
+      .take(args.limit ?? 20);
   },
 });
 
@@ -89,7 +92,7 @@ export const getCategories = query({
   args: {},
   handler: async (ctx) => {
     const trends = await ctx.db.query("trends").collect();
-    const categories = [...new Set(trends.map((t) => t.category))];
+    const categories = Array.from(new Set(trends.map((t) => t.category)));
     return categories.sort();
   },
 });
@@ -108,7 +111,7 @@ export const getTopics = query({
       trends = await ctx.db.query("trends").collect();
     }
 
-    const topics = [...new Set(trends.map((t) => t.topic))];
+    const topics = Array.from(new Set(trends.map((t) => t.topic)));
     return topics.sort();
   },
 });

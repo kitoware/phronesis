@@ -16,7 +16,8 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Phronesis - ArXiv Research Intelligence",
-  description: "AI-powered research intelligence platform connecting academic research with startup problems",
+  description:
+    "AI-powered research intelligence platform connecting academic research with startup problems",
 };
 
 export default function RootLayout({

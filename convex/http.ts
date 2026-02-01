@@ -56,7 +56,8 @@ http.route({
         return new Response("No email found", { status: 400 });
       }
 
-      const name = [first_name, last_name].filter(Boolean).join(" ") || undefined;
+      const name =
+        [first_name, last_name].filter(Boolean).join(" ") || undefined;
 
       await ctx.runMutation(internal.users.upsertFromClerk, {
         clerkId: id,

@@ -10,7 +10,9 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { ConvexTrend } from "@/types/convex";
 
 export default function TrendsPage() {
-  const trends = useQuery(api.trends.list, { limit: 20 }) as ConvexTrend[] | undefined;
+  const trends = useQuery(api.trends.list, { limit: 20 }) as
+    | ConvexTrend[]
+    | undefined;
   const categories = useQuery(api.trends.getCategories) as string[] | undefined;
 
   const isLoading = trends === undefined;

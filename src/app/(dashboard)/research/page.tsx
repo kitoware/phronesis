@@ -19,7 +19,9 @@ interface PaperStats {
 }
 
 export default function ResearchPage() {
-  const papers = useQuery(api.papers.list, { limit: 20 }) as ConvexPaper[] | undefined;
+  const papers = useQuery(api.papers.list, { limit: 20 }) as
+    | ConvexPaper[]
+    | undefined;
   const stats = useQuery(api.papers.getStats) as PaperStats | undefined;
 
   const isLoading = papers === undefined;
@@ -100,7 +102,9 @@ export default function ResearchPage() {
                   <div className="space-y-1">
                     <h3 className="font-medium">{paper.title}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {paper.authors.map((a: { name: string }) => a.name).join(", ")}
+                      {paper.authors
+                        .map((a: { name: string }) => a.name)
+                        .join(", ")}
                     </p>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{paper.primaryCategory}</Badge>
