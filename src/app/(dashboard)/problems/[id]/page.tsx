@@ -9,17 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Link2 } from "lucide-react";
 import Link from "next/link";
-import { Id } from "../../../../../convex/_generated/dataModel";
 import { use } from "react";
+import type { ConvexProblem, ConvexResearchLink } from "@/types/convex";
 
-const severityColors = {
+const severityColors: Record<string, string> = {
   low: "bg-blue-100 text-blue-800",
   medium: "bg-yellow-100 text-yellow-800",
   high: "bg-orange-100 text-orange-800",
   critical: "bg-red-100 text-red-800",
 };
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   identified: "bg-gray-100 text-gray-800",
   researching: "bg-blue-100 text-blue-800",
   "solution-found": "bg-green-100 text-green-800",
@@ -33,12 +33,10 @@ export default function ProblemDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const problem = useQuery(api.problems.getById, {
-    id: id as Id<"startupProblems">,
-  });
-  const researchLinks = useQuery(api.researchLinks.getByProblem, {
-    problemId: id as Id<"startupProblems">,
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const problem = useQuery(api.problems.getById, { id: id as any }) as ConvexProblem | null | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const researchLinks = useQuery(api.researchLinks.getByProblem, { problemId: id as any }) as ConvexResearchLink[] | undefined;
 
   const isLoading = problem === undefined;
 
@@ -122,7 +120,7 @@ export default function ProblemDetailPage({
                 <p className="text-muted-foreground">No evidence collected.</p>
               ) : (
                 <div className="space-y-4">
-                  {problem.evidence.map((e, i) => (
+                  {problem.evidence.map((e: { source: string; excerpt: string; date?: string }, i: number) => (
                     <div key={i} className="border-l-2 border-muted pl-4">
                       <p className="text-sm">{e.excerpt}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
@@ -150,7 +148,7 @@ export default function ProblemDetailPage({
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {researchLinks.map((link) => (
+                  {researchLinks.map((link: ConvexResearchLink) => (
                     <div key={link._id} className="rounded-lg border p-4">
                       <div className="flex items-center justify-between">
                         <Badge variant="outline">{link.matchType}</Badge>
@@ -177,7 +175,7 @@ export default function ProblemDetailPage({
                 <p className="text-sm text-muted-foreground">No tags</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {problem.tags.map((tag) => (
+                  {problem.tags.map((tag: string) => (
                     <Badge key={tag} variant="secondary">
                       {tag}
                     </Badge>

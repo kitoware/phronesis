@@ -10,7 +10,8 @@
     "lint:fix": "next lint --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"convex/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"convex/**/*.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:src": "tsc --noEmit --project tsconfig.src.json"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.1",

@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import type { ConvexTrend } from "@/types/convex";
 
 export default function TrendsPage() {
-  const trends = useQuery(api.trends.list, { limit: 20 });
-  const categories = useQuery(api.trends.getCategories);
+  const trends = useQuery(api.trends.list, { limit: 20 }) as ConvexTrend[] | undefined;
+  const categories = useQuery(api.trends.getCategories) as string[] | undefined;
 
   const isLoading = trends === undefined;
 
@@ -50,7 +51,7 @@ export default function TrendsPage() {
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
+                {categories.map((category: string) => (
                   <Badge key={category} variant="outline">
                     {category}
                   </Badge>
@@ -81,7 +82,7 @@ export default function TrendsPage() {
             </p>
           ) : (
             <div className="space-y-4">
-              {trends.map((trend) => (
+              {trends.map((trend: ConvexTrend) => (
                 <div
                   key={trend._id}
                   className="flex items-start justify-between border-b pb-4 last:border-0 last:pb-0"

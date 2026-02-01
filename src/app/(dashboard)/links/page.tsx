@@ -6,6 +6,7 @@ import { PageContainer, PageHeader } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ConvexResearchLink } from "@/types/convex";
 
 const matchTypeLabels: Record<string, string> = {
   direct: "Direct Match",
@@ -21,9 +22,16 @@ const reviewStatusColors: Record<string, string> = {
   "needs-review": "bg-yellow-100 text-yellow-800",
 };
 
+interface LinkStats {
+  total: number;
+  byMatchType: Record<string, number>;
+  byReviewStatus: Record<string, number>;
+  avgRelevance: number;
+}
+
 export default function LinksPage() {
-  const links = useQuery(api.researchLinks.list, { limit: 50 });
-  const stats = useQuery(api.researchLinks.getStats);
+  const links = useQuery(api.researchLinks.list, { limit: 50 }) as ConvexResearchLink[] | undefined;
+  const stats = useQuery(api.researchLinks.getStats) as LinkStats | undefined;
 
   const isLoading = links === undefined;
 
@@ -96,7 +104,7 @@ export default function LinksPage() {
             </p>
           ) : (
             <div className="space-y-4">
-              {links.map((link) => (
+              {links.map((link: ConvexResearchLink) => (
                 <div
                   key={link._id}
                   className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
@@ -113,7 +121,7 @@ export default function LinksPage() {
                       </div>
                       <p className="mt-2 text-sm">{link.matchRationale}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {link.keyInsights.slice(0, 3).map((insight, i) => (
+                        {link.keyInsights.slice(0, 3).map((insight: string, i: number) => (
                           <Badge key={i} variant="secondary">
                             {insight.length > 40
                               ? insight.slice(0, 40) + "..."

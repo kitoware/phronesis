@@ -8,10 +8,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, ExternalLink } from "lucide-react";
+import type { ConvexPaper } from "@/types/convex";
+
+interface PaperStats {
+  total: number;
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+}
 
 export default function ResearchPage() {
-  const papers = useQuery(api.papers.list, { limit: 20 });
-  const stats = useQuery(api.papers.getStats);
+  const papers = useQuery(api.papers.list, { limit: 20 }) as ConvexPaper[] | undefined;
+  const stats = useQuery(api.papers.getStats) as PaperStats | undefined;
 
   const isLoading = papers === undefined;
 
@@ -83,7 +92,7 @@ export default function ResearchPage() {
             </p>
           ) : (
             <div className="space-y-4">
-              {papers.map((paper) => (
+              {papers.map((paper: ConvexPaper) => (
                 <div
                   key={paper._id}
                   className="flex items-start justify-between border-b pb-4 last:border-0 last:pb-0"
@@ -91,7 +100,7 @@ export default function ResearchPage() {
                   <div className="space-y-1">
                     <h3 className="font-medium">{paper.title}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {paper.authors.map((a) => a.name).join(", ")}
+                      {paper.authors.map((a: { name: string }) => a.name).join(", ")}
                     </p>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{paper.primaryCategory}</Badge>

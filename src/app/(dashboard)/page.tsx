@@ -8,7 +8,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   FileText,
   Lightbulb,
-  TrendingUp,
   AlertCircle,
   Building2,
   Link2,

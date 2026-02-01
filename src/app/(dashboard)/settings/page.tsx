@@ -6,7 +6,6 @@ import { PageContainer, PageHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -31,7 +30,7 @@ export default function SettingsPage() {
         title: "Settings updated",
         description: "Your theme preference has been saved.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update settings.",
@@ -49,7 +48,7 @@ export default function SettingsPage() {
         title: "Settings updated",
         description: "Your digest preferences have been saved.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update settings.",

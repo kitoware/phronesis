@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, ExternalLink } from "lucide-react";
+import type { ConvexStartup } from "@/types/convex";
 
 const fundingStageLabels: Record<string, string> = {
   "pre-seed": "Pre-Seed",
@@ -20,9 +21,14 @@ const fundingStageLabels: Record<string, string> = {
   acquired: "Acquired",
 };
 
+interface StartupStats {
+  total: number;
+  byStage: Record<string, number>;
+}
+
 export default function StartupsPage() {
-  const startups = useQuery(api.startups.list, { limit: 20 });
-  const stats = useQuery(api.startups.getStats);
+  const startups = useQuery(api.startups.list, { limit: 20 }) as ConvexStartup[] | undefined;
+  const stats = useQuery(api.startups.getStats) as StartupStats | undefined;
 
   const isLoading = startups === undefined;
 
@@ -105,7 +111,7 @@ export default function StartupsPage() {
             </p>
           ) : (
             <div className="space-y-4">
-              {startups.map((startup) => (
+              {startups.map((startup: ConvexStartup) => (
                 <div
                   key={startup._id}
                   className="flex items-start justify-between border-b pb-4 last:border-0 last:pb-0"
@@ -133,7 +139,7 @@ export default function StartupsPage() {
                           {fundingStageLabels[startup.fundingStage]}
                         </Badge>
                       )}
-                      {startup.industries.slice(0, 2).map((industry) => (
+                      {startup.industries.slice(0, 2).map((industry: string) => (
                         <Badge key={industry} variant="secondary">
                           {industry}
                         </Badge>

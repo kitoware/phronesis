@@ -9,15 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import type { ConvexProblem } from "@/types/convex";
 
-const severityColors = {
+const severityColors: Record<string, string> = {
   low: "bg-blue-100 text-blue-800",
   medium: "bg-yellow-100 text-yellow-800",
   high: "bg-orange-100 text-orange-800",
   critical: "bg-red-100 text-red-800",
 };
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   identified: "bg-gray-100 text-gray-800",
   researching: "bg-blue-100 text-blue-800",
   "solution-found": "bg-green-100 text-green-800",
@@ -25,9 +26,16 @@ const statusColors = {
   archived: "bg-gray-200 text-gray-600",
 };
 
+interface ProblemStats {
+  total: number;
+  byCategory: Record<string, number>;
+  bySeverity: Record<string, number>;
+  byStatus: Record<string, number>;
+}
+
 export default function ProblemsPage() {
-  const problems = useQuery(api.problems.list, { limit: 20 });
-  const stats = useQuery(api.problems.getStats);
+  const problems = useQuery(api.problems.list, { limit: 20 }) as ConvexProblem[] | undefined;
+  const stats = useQuery(api.problems.getStats) as ProblemStats | undefined;
 
   const isLoading = problems === undefined;
 
@@ -106,7 +114,7 @@ export default function ProblemsPage() {
             </p>
           ) : (
             <div className="space-y-4">
-              {problems.map((problem) => (
+              {problems.map((problem: ConvexProblem) => (
                 <Link
                   key={problem._id}
                   href={`/problems/${problem._id}`}
