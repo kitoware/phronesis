@@ -57,8 +57,16 @@ export const create = mutation({
       v.object({
         title: v.string(),
         description: v.string(),
-        priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
-        effort: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+        priority: v.union(
+          v.literal("low"),
+          v.literal("medium"),
+          v.literal("high")
+        ),
+        effort: v.union(
+          v.literal("low"),
+          v.literal("medium"),
+          v.literal("high")
+        ),
         relatedPapers: v.array(v.id("papers")),
       })
     ),
@@ -93,8 +101,16 @@ export const update = mutation({
         v.object({
           title: v.string(),
           description: v.string(),
-          priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
-          effort: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+          priority: v.union(
+            v.literal("low"),
+            v.literal("medium"),
+            v.literal("high")
+          ),
+          effort: v.union(
+            v.literal("low"),
+            v.literal("medium"),
+            v.literal("high")
+          ),
           relatedPapers: v.array(v.id("papers")),
         })
       )
@@ -117,7 +133,11 @@ export const update = mutation({
 export const updateStatus = mutation({
   args: {
     id: v.id("solutionReports"),
-    status: v.union(v.literal("draft"), v.literal("published"), v.literal("archived")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived")
+    ),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, {

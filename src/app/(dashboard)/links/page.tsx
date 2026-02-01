@@ -30,7 +30,9 @@ interface LinkStats {
 }
 
 export default function LinksPage() {
-  const links = useQuery(api.researchLinks.list, { limit: 50 }) as ConvexResearchLink[] | undefined;
+  const links = useQuery(api.researchLinks.list, { limit: 50 }) as
+    | ConvexResearchLink[]
+    | undefined;
   const stats = useQuery(api.researchLinks.getStats) as LinkStats | undefined;
 
   const isLoading = links === undefined;
@@ -53,7 +55,9 @@ export default function LinksPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Relevance</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Avg. Relevance
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -63,7 +67,9 @@ export default function LinksPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Pending Review
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
@@ -115,19 +121,23 @@ export default function LinksPage() {
                         <Badge variant="outline">
                           {matchTypeLabels[link.matchType]}
                         </Badge>
-                        <Badge className={reviewStatusColors[link.reviewStatus]}>
+                        <Badge
+                          className={reviewStatusColors[link.reviewStatus]}
+                        >
                           {link.reviewStatus}
                         </Badge>
                       </div>
                       <p className="mt-2 text-sm">{link.matchRationale}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {link.keyInsights.slice(0, 3).map((insight: string, i: number) => (
-                          <Badge key={i} variant="secondary">
-                            {insight.length > 40
-                              ? insight.slice(0, 40) + "..."
-                              : insight}
-                          </Badge>
-                        ))}
+                        {link.keyInsights
+                          .slice(0, 3)
+                          .map((insight: string, i: number) => (
+                            <Badge key={i} variant="secondary">
+                              {insight.length > 40
+                                ? insight.slice(0, 40) + "..."
+                                : insight}
+                            </Badge>
+                          ))}
                       </div>
                     </div>
                     <div className="text-right">

@@ -34,9 +34,14 @@ export default function ProblemDetailPage({
 }) {
   const { id } = use(params);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const problem = useQuery(api.problems.getById, { id: id as any }) as ConvexProblem | null | undefined;
+  const problem = useQuery(api.problems.getById, { id: id as any }) as
+    | ConvexProblem
+    | null
+    | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const researchLinks = useQuery(api.researchLinks.getByProblem, { problemId: id as any }) as ConvexResearchLink[] | undefined;
+  const researchLinks = useQuery(api.researchLinks.getByProblem, {
+    problemId: id as any,
+  }) as ConvexResearchLink[] | undefined;
 
   const isLoading = problem === undefined;
 
@@ -101,7 +106,7 @@ export default function ProblemDetailPage({
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2 space-y-6">
+        <div className="space-y-6 md:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle>Description</CardTitle>
@@ -120,15 +125,20 @@ export default function ProblemDetailPage({
                 <p className="text-muted-foreground">No evidence collected.</p>
               ) : (
                 <div className="space-y-4">
-                  {problem.evidence.map((e: { source: string; excerpt: string; date?: string }, i: number) => (
-                    <div key={i} className="border-l-2 border-muted pl-4">
-                      <p className="text-sm">{e.excerpt}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Source: {e.source}
-                        {e.date && ` • ${e.date}`}
-                      </p>
-                    </div>
-                  ))}
+                  {problem.evidence.map(
+                    (
+                      e: { source: string; excerpt: string; date?: string },
+                      i: number
+                    ) => (
+                      <div key={i} className="border-l-2 border-muted pl-4">
+                        <p className="text-sm">{e.excerpt}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Source: {e.source}
+                          {e.date && ` • ${e.date}`}
+                        </p>
+                      </div>
+                    )
+                  )}
                 </div>
               )}
             </CardContent>

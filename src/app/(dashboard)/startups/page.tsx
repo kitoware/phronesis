@@ -27,7 +27,9 @@ interface StartupStats {
 }
 
 export default function StartupsPage() {
-  const startups = useQuery(api.startups.list, { limit: 20 }) as ConvexStartup[] | undefined;
+  const startups = useQuery(api.startups.list, { limit: 20 }) as
+    | ConvexStartup[]
+    | undefined;
   const stats = useQuery(api.startups.getStats) as StartupStats | undefined;
 
   const isLoading = startups === undefined;
@@ -48,7 +50,9 @@ export default function StartupsPage() {
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Startups</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Startups
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.total ?? 0}</div>
@@ -139,11 +143,13 @@ export default function StartupsPage() {
                           {fundingStageLabels[startup.fundingStage]}
                         </Badge>
                       )}
-                      {startup.industries.slice(0, 2).map((industry: string) => (
-                        <Badge key={industry} variant="secondary">
-                          {industry}
-                        </Badge>
-                      ))}
+                      {startup.industries
+                        .slice(0, 2)
+                        .map((industry: string) => (
+                          <Badge key={industry} variant="secondary">
+                            {industry}
+                          </Badge>
+                        ))}
                       {startup.industries.length > 2 && (
                         <Badge variant="secondary">
                           +{startup.industries.length - 2}

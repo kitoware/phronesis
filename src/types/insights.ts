@@ -1,6 +1,10 @@
 import { Id } from "../../convex/_generated/dataModel";
 
-export type Significance = "incremental" | "notable" | "significant" | "breakthrough";
+export type Significance =
+  | "incremental"
+  | "notable"
+  | "significant"
+  | "breakthrough";
 
 export interface TechnicalContribution {
   type: string;

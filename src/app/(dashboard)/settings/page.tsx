@@ -4,7 +4,13 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { PageContainer, PageHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -43,7 +49,10 @@ export default function SettingsPage() {
     frequency: "daily" | "weekly" | "monthly"
   ) => {
     try {
-      await updatePreferences({ digestFrequency: frequency, emailDigest: true });
+      await updatePreferences({
+        digestFrequency: frequency,
+        emailDigest: true,
+      });
       toast({
         title: "Settings updated",
         description: "Your digest preferences have been saved.",
