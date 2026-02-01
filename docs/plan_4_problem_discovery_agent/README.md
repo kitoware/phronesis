@@ -1,7 +1,7 @@
 # Plan 4: Startup Problem Discovery Agent (Agent 2)
 
 **Timeline:** Weeks 13-18 (parallel)
-**Dependencies:** plan_1 (Foundation & Scaffolding)
+**Dependencies:** plan_1 (Foundation & Scaffolding), plan_7 (Agent Tools)
 **Parallel With:** plan_2, plan_3, plan_5, plan_6
 
 ---
@@ -10,731 +10,1589 @@
 
 The Startup Problem Discovery Agent continuously monitors social channels, forums, and startup databases to identify pain points, challenges, and unmet needs faced by Series A+ startups.
 
+**Architecture:** LangGraph StateGraph with supervisor orchestration
+
 ---
 
 ## Scope
 
 - Exa.ai unified search integration (primary)
 - Tavily/Perplexity (backup)
-- Crunchbase startup data tracking
-- Pain point extraction pipeline (LLM)
+- Crunchbase startup data tracking (RapidAPI)
+- **YouTube transcript analysis** (founder interviews, pitch talks, podcasts)
+- Pain point extraction pipeline (LLM via OpenRouter)
 - Problem clustering (HDBSCAN)
 - Implicit signal detection
 - Founder network intelligence
 
 ---
 
+## Technology Stack
+
+| Technology                 | Purpose                                      |
+| -------------------------- | -------------------------------------------- |
+| **LangGraph**              | Agent orchestration and state management     |
+| **OpenRouter**             | Unified LLM provider (Claude 3.5 Sonnet)     |
+| **Convex**                 | Data persistence and real-time subscriptions |
+| **Exa.ai**                 | Semantic web search (primary)                |
+| **Tavily**                 | Research-focused search (backup)             |
+| **Crunchbase (RapidAPI)**  | Series A+ startup data and funding info      |
+| **YouTube Transcript API** | Founder interview and pitch talk analysis    |
+| **HDBSCAN**                | Problem clustering algorithm                 |
+
+---
+
 ## Key Deliverables
 
-1. Social channel scanner - Exa.ai (SPD-001)
-2. Startup database tracker (SPD-002)
-3. Pain point extraction engine (SPD-003)
-4. Problem clustering (SPD-004)
-5. Proactive prediction (SPD-005)
-6. Founder network intelligence (SPD-006)
-7. Implicit problem detection (SPD-007)
-8. Competitive gap analysis (SPD-008)
-9. Real-time alert system (SPD-009)
-10. Convex functions: startups, startupProblems, founders, implicitSignals
+1. LangGraph StateGraph definition (SPD-001)
+2. Social channel scanner node - Exa.ai (SPD-002)
+3. Startup database sync node (SPD-003)
+4. Pain point extraction node (SPD-004)
+5. Problem clustering node (SPD-005)
+6. Implicit signal detection node (SPD-006)
+7. Database persistence node (SPD-007)
+8. Convex persistence functions
+9. Shared tools integration from Plan 7
 
 ---
 
-## Git Worktree Setup
+## LangGraph Architecture
 
-```bash
-# Create worktree from main after plan_1 is complete
-git worktree add ../phronesis-agent2 feature/problem-discovery
-cd ../phronesis-agent2
+### Agent Orchestration Pattern
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           PROBLEM DISCOVERY AGENT (LangGraph StateGraph)         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                    ORCHESTRATOR STATE                       │ │
+│  │  • searchQueries: SearchQuery[]                             │ │
+│  │  • rawResults: SearchResult[]                               │ │
+│  │  • extractedProblems: Problem[]                             │ │
+│  │  • clusteredProblems: ProblemCluster[]                      │ │
+│  │  • implicitSignals: ImplicitSignal[]                        │ │
+│  │  • savedProblems: SavedProblem[]                            │ │
+│  │  • errors: ErrorInfo[]                                      │ │
+│  │  • status: ProcessingStatus                                 │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                              │                                   │
+│                              ▼                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                   StateGraph FLOW                         │   │
+│  │                                                           │   │
+│  │   START                                                   │   │
+│  │     │                                                     │   │
+│  │     ▼                                                     │   │
+│  │  ┌─────────────────┐                                      │   │
+│  │  │ search_channels │ ──► Exa.ai semantic search           │   │
+│  │  └────────┬────────┘     across all platforms             │   │
+│  │           │                                               │   │
+│  │           ▼                                               │   │
+│  │  ┌─────────────────┐                                      │   │
+│  │  │ sync_startups   │ ──► Crunchbase Series A+ data        │   │
+│  │  └────────┬────────┘                                      │   │
+│  │           │                                               │   │
+│  │           ▼                                               │   │
+│  │  ┌─────────────────┐                                      │   │
+│  │  │ extract_problems│ ──► LLM-based pain point extraction  │   │
+│  │  └────────┬────────┘                                      │   │
+│  │           │                                               │   │
+│  │           ▼                                               │   │
+│  │  ┌─────────────────┐                                      │   │
+│  │  │ detect_implicit │ ──► Implicit signal detection        │   │
+│  │  └────────┬────────┘                                      │   │
+│  │           │                                               │   │
+│  │           ▼                                               │   │
+│  │  ┌─────────────────┐                                      │   │
+│  │  │ cluster_problems│ ──► HDBSCAN clustering               │   │
+│  │  └────────┬────────┘                                      │   │
+│  │           │                                               │   │
+│  │           ▼                                               │   │
+│  │  ┌─────────────────┐                                      │   │
+│  │  │ save_to_db      │ ──► Convex persistence               │   │
+│  │  └────────┬────────┘                                      │   │
+│  │           │                                               │   │
+│  │           ▼                                               │   │
+│  │         END                                               │   │
+│  │                                                           │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  Checkpointing: ConvexCheckpointer (thread-based persistence)   │
+│  Triggering: API routes, webhooks, or manual invocation         │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## PRD Sections Extracted
+## LangGraph Implementation
 
-### Section 5.2: Startup Problem Discovery Agent (Agent 2)
-
-#### 5.2.1 Agent Overview
-
-The Startup Problem Discovery Agent continuously monitors social channels, forums, and startup databases to identify pain points, challenges, and unmet needs faced by Series A+ startups.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│         STARTUP PROBLEM DISCOVERY AGENT ARCHITECTURE            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │                    AGENT ORCHESTRATOR                     │  │
-│  │  • Monitors social channels continuously                  │  │
-│  │  • Tracks Series A+ startups from databases               │  │
-│  │  • Triggers pain point extraction workflows               │  │
-│  │  • Manages problem categorization                         │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                              │                                  │
-│         ┌────────────────────┼────────────────────┐            │
-│         ▼                    ▼                    ▼            │
-│  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐     │
-│  │   SOCIAL    │      │   STARTUP   │      │  PAIN POINT │     │
-│  │  SCANNER    │─────►│   TRACKER   │─────►│  EXTRACTOR  │     │
-│  └─────────────┘      └─────────────┘      └─────────────┘     │
-│         │                    │                    │             │
-│         ▼                    ▼                    ▼             │
-│  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐     │
-│  │ • Reddit    │      │ • Crunchbase│      │ • LLM-based │     │
-│  │   API       │      │ • PitchBook │      │   extraction│     │
-│  │ • Twitter/X │      │ • CB        │      │ • Problem   │     │
-│  │   API       │      │   Insights  │      │   clustering│     │
-│  │ • HN API    │      │ • Series A+ │      │ • Severity  │     │
-│  │ • Forums    │      │   filtering │      │   scoring   │     │
-│  └─────────────┘      └─────────────┘      └─────────────┘     │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### 5.2.2 Feature: Social Channel Scanner
-
-**Feature ID:** SPD-001
-**Priority:** P0 (Critical)
-**Complexity:** High
-
-**Description:** Continuously monitor social platforms for startup founders, employees, and users discussing pain points and challenges.
-
-**Unified Search Architecture:**
-
-Instead of integrating with 15+ individual APIs, we use AI-native search engines that can semantically search across all platforms simultaneously.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              INTELLIGENT SEARCH LAYER                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    EXA.AI (Primary)                      │   │
-│  │  • Semantic search across entire web                     │   │
-│  │  • Neural search understands intent, not just keywords   │   │
-│  │  • Returns structured content from any platform          │   │
-│  │  • Filters by domain, date, content type                 │   │
-│  │  • Auto-extracts relevant snippets                       │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                              │                                  │
-│                              ▼                                  │
-│  ┌──────────────────────┬──────────────────────┐               │
-│  │   TAVILY (Backup)    │  PERPLEXITY (Backup) │               │
-│  │  • Research-focused  │  • Real-time search  │               │
-│  │  • Fact extraction   │  • Source citations  │               │
-│  └──────────────────────┴──────────────────────┘               │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Primary Search Provider: Exa.ai**
-
-| Capability | How It Helps |
-|------------|--------------|
-| **Semantic Search** | "Find startup founders complaining about data pipeline issues" - understands intent |
-| **Domain Filtering** | Search only Reddit, Twitter, HN, or specific sites |
-| **Content Extraction** | Returns clean text, not just links |
-| **Similarity Search** | "Find content similar to this problem statement" |
-| **Date Filtering** | Focus on recent discussions (last 7/30/90 days) |
-| **Auto-categorization** | Returns content type (tweet, post, article, etc.) |
-
-**Search Query Templates:**
+### State Schema Definition
 
 ```typescript
-// Example Exa queries for problem discovery
+// src/agents/problem-discovery/state.ts
+import { Annotation } from "@langchain/langgraph";
 
-// 1. Explicit pain point search
-const explicitPainPoints = await exa.search({
-  query: "startup founder struggling with scaling infrastructure",
-  type: "neural",
-  numResults: 100,
-  includeDomains: ["reddit.com", "twitter.com", "news.ycombinator.com"],
-  startPublishedDate: "2024-01-01",
-  contents: { text: true }
+// Type definitions
+interface SearchQuery {
+  id: string;
+  query: string;
+  type: "explicit" | "implicit" | "review" | "hiring" | "founder";
+  domains?: string[];
+  dateRange?: { start: Date; end: Date };
+}
+
+interface SearchResult {
+  id: string;
+  queryId: string;
+  url: string;
+  title: string;
+  text: string;
+  highlights?: string[];
+  publishedDate?: Date;
+  domain: string;
+  platform: "reddit" | "twitter" | "hackernews" | "github" | "g2" | "other";
+  score: number;
+}
+
+interface Problem {
+  id: string;
+  sourceResultId: string;
+  statement: string;
+  category: {
+    primary: "technical" | "operational" | "product" | "business";
+    secondary: string;
+    tertiary?: string;
+  };
+  severity: number; // 1-10
+  frequency: "low" | "medium" | "high";
+  urgency: "low" | "medium" | "high" | "critical";
+  addressability: number; // 0-1 confidence
+  evidence: string[];
+  startupId?: string;
+}
+
+interface ImplicitSignal {
+  id: string;
+  sourceResultId: string;
+  signalType:
+    | "build_vs_buy"
+    | "excessive_hiring"
+    | "workaround_sharing"
+    | "migration_announcement"
+    | "open_source_creation"
+    | "integration_complaint"
+    | "scale_breakpoint"
+    | "manual_process";
+  inferredProblem: string;
+  confidence: number;
+  evidence: string;
+}
+
+interface ProblemCluster {
+  id: string;
+  theme: string;
+  description: string;
+  problemIds: string[];
+  size: number;
+  industries: string[];
+  fundingStages: string[];
+  growthRate: number; // new problems/week
+}
+
+interface SavedProblem {
+  convexId: string;
+  problemId: string;
+  savedAt: Date;
+}
+
+interface ErrorInfo {
+  node: string;
+  error: string;
+  timestamp: Date;
+  recoverable: boolean;
+}
+
+type ProcessingStatus =
+  | "idle"
+  | "searching"
+  | "syncing_startups"
+  | "extracting"
+  | "detecting_signals"
+  | "clustering"
+  | "saving"
+  | "complete"
+  | "failed";
+
+interface Progress {
+  currentNode: string;
+  queriesProcessed: number;
+  totalQueries: number;
+  resultsFound: number;
+  problemsExtracted: number;
+  signalsDetected: number;
+  clustersFormed: number;
+}
+
+// LangGraph State Annotation
+export const ProblemDiscoveryState = Annotation.Root({
+  // Input
+  searchQueries: Annotation<SearchQuery[]>({
+    reducer: (current, update) => [...current, ...update],
+    default: () => [],
+  }),
+
+  // Search results
+  rawResults: Annotation<SearchResult[]>({
+    reducer: (current, update) => {
+      const existingIds = new Set(current.map((r) => r.id));
+      const newResults = update.filter((r) => !existingIds.has(r.id));
+      return [...current, ...newResults];
+    },
+    default: () => [],
+  }),
+
+  // Extracted problems
+  extractedProblems: Annotation<Problem[]>({
+    reducer: (current, update) => [...current, ...update],
+    default: () => [],
+  }),
+
+  // Implicit signals
+  implicitSignals: Annotation<ImplicitSignal[]>({
+    reducer: (current, update) => [...current, ...update],
+    default: () => [],
+  }),
+
+  // Clustered problems
+  clusteredProblems: Annotation<ProblemCluster[]>({
+    reducer: (_, update) => update, // Replace on update
+    default: () => [],
+  }),
+
+  // Saved references
+  savedProblems: Annotation<SavedProblem[]>({
+    reducer: (current, update) => [...current, ...update],
+    default: () => [],
+  }),
+
+  // Error tracking
+  errors: Annotation<ErrorInfo[]>({
+    reducer: (current, update) => [...current, ...update],
+    default: () => [],
+  }),
+
+  // Processing status
+  status: Annotation<ProcessingStatus>({
+    reducer: (_, update) => update,
+    default: () => "idle" as ProcessingStatus,
+  }),
+
+  // Progress tracking
+  progress: Annotation<Progress>({
+    reducer: (_, update) => update,
+    default: () => ({
+      currentNode: "start",
+      queriesProcessed: 0,
+      totalQueries: 0,
+      resultsFound: 0,
+      problemsExtracted: 0,
+      signalsDetected: 0,
+      clustersFormed: 0,
+    }),
+  }),
 });
 
-// 2. Implicit signal search (build vs buy)
-const buildVsBuy = await exa.search({
-  query: "we built our own internal tool because nothing existed",
-  type: "neural",
-  numResults: 50,
-  contents: { text: true, highlights: true }
-});
-
-// 3. Negative review search
-const negativeReviews = await exa.search({
-  query: "disappointed with limitations missing features",
-  includeDomains: ["g2.com", "capterra.com", "trustradius.com"],
-  numResults: 100,
-  contents: { text: true }
-});
-
-// 4. Job posting pain signals
-const hiringSignals = await exa.search({
-  query: "hiring to fix rebuild scale our broken",
-  includeDomains: ["linkedin.com", "lever.co", "greenhouse.io"],
-  numResults: 50,
-  contents: { text: true }
-});
-
-// 5. Founder complaints (high credibility)
-const founderComplaints = await exa.search({
-  query: "as a founder CEO our biggest challenge problem",
-  type: "neural",
-  numResults: 100,
-  contents: { text: true }
-});
+export type ProblemDiscoveryStateType = typeof ProblemDiscoveryState.State;
 ```
 
-**Fallback Search Providers:**
-
-| Provider | Use Case | Strengths |
-|----------|----------|-----------|
-| **Tavily** | Deep research queries, fact extraction | Better for longer-form analysis |
-| **Perplexity API** | Real-time trending topics, news | Always up-to-date, good citations |
-| **Brave Search API** | Privacy-focused fallback | Independent index |
-
-**Coverage Across Platforms (via Exa):**
-
-| Platform | Indexed | Search Strategy |
-|----------|---------|-----------------|
-| Reddit | Yes | Domain filter: reddit.com |
-| Twitter/X | Yes | Domain filter: twitter.com |
-| Hacker News | Yes | Domain filter: news.ycombinator.com |
-| LinkedIn | Partial | Public posts indexed |
-| GitHub | Yes | Issues, discussions, READMEs |
-| G2/Capterra | Yes | Domain filter for reviews |
-| Stack Overflow | Yes | Technical Q&A |
-| Blogs/Medium | Yes | Startup blogs, postmortems |
-| News sites | Yes | TechCrunch, etc. |
-| Podcasts | Partial | Transcripts when available |
-
-**Why Unified Search vs Individual APIs:**
-
-| Aspect | Individual APIs (15+) | Unified Search (Exa) |
-|--------|----------------------|----------------------|
-| **Integration complexity** | 15+ OAuth flows, rate limits, schemas | 1 API key, 1 SDK |
-| **Maintenance burden** | API changes, deprecations, outages | Single provider to monitor |
-| **Query flexibility** | Fixed endpoints, limited search | Semantic/neural search, any query |
-| **Cross-platform search** | Manual aggregation | Single query, all platforms |
-| **Cost** | $500-2000+/month combined | ~$100-500/month |
-| **Development time** | Weeks per integration | Hours total |
-| **Coverage gaps** | Miss platforms without APIs | Web-wide coverage |
-
-**Intelligent Discovery Techniques:**
-
-1. **Founder Social Graph Analysis**
-   - Build graph of Series A+ founders and their connections
-   - Monitor complaints/frustrations from verified founders
-   - Track engagement patterns on problem-related content
-
-2. **Hiring Signal Analysis**
-   - Parse job descriptions for pain indicators
-   - "We need someone to fix/rebuild/scale our..."
-   - "Looking for someone who has solved X problem"
-   - Repeated hiring for same role = retention/tooling issue
-
-3. **Negative Review Mining**
-   - Aggregate 1-3 star reviews from G2, Capterra, TrustRadius
-   - Cluster by complaint type across competing products
-   - Identify systematic industry-wide gaps
-
-4. **Postmortem Pattern Extraction**
-   - Analyze startup failure postmortems
-   - Extract common failure patterns and challenges
-   - Map to current startups at similar stages
-
-5. **Support Ticket Pattern Analysis**
-   - Monitor public support forums of popular B2B tools
-   - Identify recurring issues and workaround requests
-   - Track "when will you add X" feature requests
-
-6. **Conference Talk Mining**
-   - Transcribe startup conference presentations
-   - Extract "challenges we faced" and "lessons learned" sections
-   - Identify problems mentioned by multiple speakers
-
-7. **Competitor Comparison Gaps**
-   - Scrape "vs" comparison pages and reviews
-   - Extract "I wish X had this feature from Y"
-   - Identify underserved needs across market
-
-8. **Employee Frustration Signals**
-   - Glassdoor/Blind mentions of internal tooling issues
-   - "We built internal tools because nothing exists for X"
-   - Engineering blog posts about custom solutions
-
-**Search Patterns:**
-
-```
-Pain Point Keywords:
-- "struggling with", "biggest challenge", "pain point"
-- "wish there was", "can't find a solution"
-- "our team spends too much time on"
-- "broken process", "manual work", "inefficient"
-- "scaling issues", "bottleneck", "blocker"
-- "built our own", "had to write custom", "nothing exists for"
-- "anyone else dealing with", "how do you handle"
-- "worst part of my job", "hate dealing with"
-- "if only there was", "why doesn't X exist"
-
-Startup Signals:
-- "Series A", "Series B", "just raised"
-- "YC W24", "YC S24", "backed by"
-- "founding team", "our startup", "we're building"
-- "@company.com" email domains in profiles
-- Verified founder/CEO/CTO badges
-
-Urgency Indicators:
-- "urgent", "critical", "blocking us"
-- "costing us $X", "losing customers because"
-- "need this yesterday", "can't scale without"
-```
-
-**Functional Requirements:**
-
-| ID | Requirement | Acceptance Criteria |
-|----|-------------|---------------------|
-| SPD-001-01 | Semantic search for startup pain points | Process 1000+ relevant results/day via Exa |
-| SPD-001-02 | Multi-platform coverage | Single query covers Reddit, Twitter, HN, GitHub, G2, etc. |
-| SPD-001-03 | Intent-based discovery | Neural search understands "founder struggling with X" |
-| SPD-001-04 | Filter for Series A+ signals | 90%+ accuracy via Crunchbase enrichment |
-| SPD-001-05 | Scheduled discovery runs | Hourly scans with result deduplication |
-| SPD-001-06 | Result caching | 24-hour cache to optimize API costs |
-
-#### 5.2.3 Feature: Startup Database Tracker
-
-**Feature ID:** SPD-002
-**Priority:** P0 (Critical)
-**Complexity:** Medium
-
-**Description:** Track Series A+ startups from funding databases to build a comprehensive list of companies to monitor.
-
-**Data Sources:**
-
-| Source | Data Extracted | Update Frequency |
-|--------|---------------|------------------|
-| **Crunchbase** | Company profiles, funding rounds, team | Daily |
-| **PitchBook** | Detailed financials, investors, valuations | Daily |
-| **CB Insights** | Market maps, emerging companies | Weekly |
-| **ProductHunt** | New product launches, user feedback | Real-time |
-| **AngelList** | Startup profiles, team composition | Weekly |
-
-**Filtering Criteria:**
+### StateGraph Definition
 
 ```typescript
-interface StartupFilter {
-  fundingStage: "series_a" | "series_b" | "series_c" | "series_d_plus";
-  fundingAmount: { min: number; max?: number }; // e.g., $5M - $100M
-  foundedDate: { after: Date }; // e.g., last 5 years
-  industries: string[]; // e.g., ["AI/ML", "SaaS", "FinTech"]
-  employeeCount: { min: number; max: number }; // e.g., 20-500
-  location?: string[]; // optional geographic filter
+// src/agents/problem-discovery/graph.ts
+import { StateGraph, START, END } from "@langchain/langgraph";
+import { ProblemDiscoveryState, ProblemDiscoveryStateType } from "./state";
+import { ConvexCheckpointer } from "../checkpointer/convex";
+
+// Import nodes
+import { searchChannelsNode } from "./nodes/search-channels";
+import { syncStartupsNode } from "./nodes/sync-startups";
+import { extractProblemsNode } from "./nodes/extract-problems";
+import { detectImplicitNode } from "./nodes/detect-implicit";
+import { clusterProblemsNode } from "./nodes/cluster-problems";
+import { saveToDbNode } from "./nodes/save-to-db";
+
+// Build the graph
+const builder = new StateGraph(ProblemDiscoveryState)
+  // Add all nodes
+  .addNode("search_channels", searchChannelsNode)
+  .addNode("sync_startups", syncStartupsNode)
+  .addNode("extract_problems", extractProblemsNode)
+  .addNode("detect_implicit", detectImplicitNode)
+  .addNode("cluster_problems", clusterProblemsNode)
+  .addNode("save_to_db", saveToDbNode)
+
+  // Define edges (sequential flow)
+  .addEdge(START, "search_channels")
+  .addEdge("search_channels", "sync_startups")
+  .addEdge("sync_startups", "extract_problems")
+  .addEdge("extract_problems", "detect_implicit")
+  .addEdge("detect_implicit", "cluster_problems")
+  .addEdge("cluster_problems", "save_to_db")
+  .addEdge("save_to_db", END);
+
+// Compile with Convex checkpointer
+export function createProblemDiscoveryGraph(convexClient: ConvexClient) {
+  const checkpointer = new ConvexCheckpointer(convexClient);
+
+  return builder.compile({
+    checkpointer,
+  });
+}
+
+// Export compiled graph for direct use
+export const problemDiscoveryGraph = builder.compile();
+```
+
+### Node Implementations
+
+#### 1. Search Channels Node (Exa.ai Integration)
+
+```typescript
+// src/agents/problem-discovery/nodes/search-channels.ts
+import { ProblemDiscoveryStateType } from "../state";
+import { exaSearch, exaSimilaritySearch } from "@/agents/tools/search/exa";
+import { tavilySearch } from "@/agents/tools/search/tavily";
+import { v4 as uuidv4 } from "uuid";
+
+// Pre-defined search query templates
+const QUERY_TEMPLATES = {
+  explicit: [
+    "startup founder struggling with scaling infrastructure",
+    "our team spends too much time on manual data pipeline work",
+    "biggest challenge as a Series A startup",
+    "pain point running engineering team at scale",
+    "wish there was a better solution for developer productivity",
+  ],
+  implicit: [
+    "we built our own internal tool because nothing existed",
+    "had to write custom solution for data quality monitoring",
+    "here's how we hack around the limitations of",
+    "switched from X to Y because critical limitations",
+  ],
+  reviews: [
+    "disappointed with limitations missing features enterprise software",
+    "frustrated with pricing complexity SaaS tools",
+  ],
+  hiring: [
+    "hiring to fix rebuild scale our broken infrastructure",
+    "looking for someone who has solved data pipeline problems",
+  ],
+  founder: [
+    "as a founder CEO our biggest challenge problem scaling",
+    "startup lessons learned hardest part building company",
+  ],
+};
+
+const PLATFORM_DOMAINS: Record<string, string[]> = {
+  social: ["reddit.com", "twitter.com", "news.ycombinator.com"],
+  reviews: ["g2.com", "capterra.com", "trustradius.com"],
+  hiring: ["linkedin.com", "lever.co", "greenhouse.io"],
+  tech: ["github.com", "stackoverflow.com"],
+};
+
+export async function searchChannelsNode(
+  state: ProblemDiscoveryStateType
+): Promise<Partial<ProblemDiscoveryStateType>> {
+  console.log("[search_channels] Starting social channel search...");
+
+  const results: SearchResult[] = [];
+  const errors: ErrorInfo[] = [];
+  const queries: SearchQuery[] = [];
+
+  // Generate search queries from templates
+  for (const [type, templates] of Object.entries(QUERY_TEMPLATES)) {
+    for (const query of templates) {
+      queries.push({
+        id: uuidv4(),
+        query,
+        type: type as SearchQuery["type"],
+        domains:
+          type === "reviews"
+            ? PLATFORM_DOMAINS.reviews
+            : PLATFORM_DOMAINS.social,
+        dateRange: {
+          start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+          end: new Date(),
+        },
+      });
+    }
+  }
+
+  // Execute searches with Exa.ai (primary)
+  for (const searchQuery of queries) {
+    try {
+      const exaResults = await exaSearch({
+        query: searchQuery.query,
+        type: "neural",
+        numResults: 50,
+        includeDomains: searchQuery.domains,
+        startPublishedDate: searchQuery.dateRange?.start.toISOString(),
+        contents: { text: true, highlights: true },
+      });
+
+      // Transform Exa results to our format
+      for (const result of exaResults.results) {
+        results.push({
+          id: uuidv4(),
+          queryId: searchQuery.id,
+          url: result.url,
+          title: result.title,
+          text: result.text || "",
+          highlights: result.highlights,
+          publishedDate: result.publishedDate
+            ? new Date(result.publishedDate)
+            : undefined,
+          domain: new URL(result.url).hostname,
+          platform: detectPlatform(result.url),
+          score: result.score || 0.5,
+        });
+      }
+
+      console.log(
+        `[search_channels] Query "${searchQuery.query.slice(0, 40)}..." returned ${exaResults.results.length} results`
+      );
+    } catch (error) {
+      console.error(
+        `[search_channels] Exa search failed, trying Tavily fallback:`,
+        error
+      );
+
+      // Fallback to Tavily
+      try {
+        const tavilyResults = await tavilySearch({
+          query: searchQuery.query,
+          maxResults: 20,
+          searchDepth: "advanced",
+          includeDomains: searchQuery.domains,
+        });
+
+        for (const result of tavilyResults.results) {
+          results.push({
+            id: uuidv4(),
+            queryId: searchQuery.id,
+            url: result.url,
+            title: result.title,
+            text: result.content,
+            domain: new URL(result.url).hostname,
+            platform: detectPlatform(result.url),
+            score: result.score,
+          });
+        }
+      } catch (tavilyError) {
+        errors.push({
+          node: "search_channels",
+          error: `Both Exa and Tavily failed for query: ${searchQuery.query}`,
+          timestamp: new Date(),
+          recoverable: true,
+        });
+      }
+    }
+  }
+
+  // Deduplicate by URL
+  const uniqueResults = deduplicateResults(results);
+
+  console.log(
+    `[search_channels] Total unique results: ${uniqueResults.length}`
+  );
+
+  return {
+    searchQueries: queries,
+    rawResults: uniqueResults,
+    status: "syncing_startups",
+    progress: {
+      currentNode: "search_channels",
+      queriesProcessed: queries.length,
+      totalQueries: queries.length,
+      resultsFound: uniqueResults.length,
+      problemsExtracted: 0,
+      signalsDetected: 0,
+      clustersFormed: 0,
+    },
+    errors,
+  };
+}
+
+function detectPlatform(url: string): SearchResult["platform"] {
+  const hostname = new URL(url).hostname.toLowerCase();
+  if (hostname.includes("reddit.com")) return "reddit";
+  if (hostname.includes("twitter.com") || hostname.includes("x.com"))
+    return "twitter";
+  if (hostname.includes("ycombinator.com")) return "hackernews";
+  if (hostname.includes("github.com")) return "github";
+  if (hostname.includes("g2.com")) return "g2";
+  return "other";
+}
+
+function deduplicateResults(results: SearchResult[]): SearchResult[] {
+  const seen = new Map<string, SearchResult>();
+  for (const result of results) {
+    const normalizedUrl = result.url.toLowerCase().replace(/\/$/, "");
+    if (
+      !seen.has(normalizedUrl) ||
+      result.score > seen.get(normalizedUrl)!.score
+    ) {
+      seen.set(normalizedUrl, result);
+    }
+  }
+  return Array.from(seen.values());
 }
 ```
 
-#### 5.2.4 Feature: Pain Point Extraction Engine
-
-**Feature ID:** SPD-003
-**Priority:** P0 (Critical)
-**Complexity:** Very High
-
-**Description:** Use LLM-powered analysis to extract, categorize, and score pain points from social content.
-
-**Extraction Pipeline:**
-
-1. **Content Ingestion**
-   - Aggregate posts from all social channels
-   - Associate with startup profiles where possible
-   - Deduplicate and normalize content
-
-2. **Pain Point Identification**
-   - LLM extraction of explicit pain points
-   - Inference of implicit challenges
-   - Context enrichment from thread/replies
-
-3. **Categorization**
-   - Technical challenges (scaling, performance, reliability)
-   - Operational challenges (hiring, processes, tools)
-   - Product challenges (features, UX, adoption)
-   - Business challenges (GTM, pricing, competition)
-
-4. **Scoring**
-   - Severity score (1-10)
-   - Frequency score (how often mentioned)
-   - Urgency indicators
-   - Addressability score (can research help?)
-
-**Output: Startup Problem Card**
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  STARTUP PROBLEM CARD                                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Startup: "DataFlow AI" (Series B, $45M raised)                │
-│  Industry: Data Infrastructure | Founded: 2022                  │
-│  Source: Reddit r/dataengineering + Twitter                    │
-│                                                                 │
-│  Problem Statement:                                             │
-│  "Our data pipeline observability is a nightmare. We spend     │
-│   30+ hours/week debugging data quality issues that surface    │
-│   days after they occur."                                       │
-│                                                                 │
-│  Category: Technical > Data Quality > Observability            │
-│                                                                 │
-│  Severity: 8/10 | Frequency: High | Urgency: Critical          │
-│                                                                 │
-│  Evidence:                                                      │
-│  • [Reddit post] "Spending entire sprints on data debugging"   │
-│  • [Twitter thread] "Why is data observability so hard?"       │
-│  • [HN comment] "We built internal tooling, still broken"      │
-│                                                                 │
-│  Similar Problems Found: 47 other startups                     │
-│                                                                 │
-│  Research Addressable: Yes (confidence: 85%)                   │
-│                                                                 │
-│  [View Sources] [Find Research] [Track Startup]                │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### 5.2.5 Feature: Problem Clustering & Trends
-
-**Feature ID:** SPD-004
-**Priority:** P1 (High)
-
-**Description:** Cluster similar problems across startups to identify systemic industry challenges.
-
-**Clustering Approach:**
-1. Generate embeddings for each problem statement
-2. Apply HDBSCAN clustering
-3. Extract cluster themes via LLM summarization
-4. Track cluster growth over time
-
-**Output Metrics:**
-- Problem cluster size (# of startups affected)
-- Cluster growth rate (new problems/week)
-- Industry concentration
-- Funding stage distribution
-
-#### 5.2.6 Feature: Proactive Problem Prediction
-
-**Feature ID:** SPD-005
-**Priority:** P2 (Medium)
-**Complexity:** Very High
-
-**Description:** Predict problems that startups will likely face based on their stage, industry, and growth trajectory.
-
-**Prediction Signals:**
-
-1. **Stage-Based Prediction**
-   - Map common problems to funding stages
-   - Series A: Product-market fit, early scaling
-   - Series B: Team scaling, process formalization
-   - Series C+: Enterprise readiness, international expansion
-   - Alert startups about upcoming challenges
-
-2. **Growth Trajectory Analysis**
-   - Monitor headcount growth velocity
-   - Predict infrastructure/tooling breaking points
-   - "Companies that grew from 50→150 engineers typically face X"
-
-3. **Tech Stack Analysis**
-   - Identify technology choices from job postings/GitHub
-   - Predict problems based on known limitations
-   - "Companies using X at your scale often struggle with Y"
-
-4. **Cohort Pattern Matching**
-   - Group startups by industry + stage + tech stack
-   - Analyze problems from similar companies 6-12 months ahead
-   - Proactive warning system
-
-#### 5.2.7 Feature: Founder Network Intelligence
-
-**Feature ID:** SPD-006
-**Priority:** P2 (Medium)
-**Complexity:** High
-
-**Description:** Leverage founder social networks to discover problems through trusted connections.
-
-**Network Analysis:**
-
-1. **Founder Influence Mapping**
-   - Identify high-signal founders (successful exits, active sharers)
-   - Weight their complaints/observations higher
-   - Track who they engage with on problem discussions
-
-2. **VC Portfolio Pattern Detection**
-   - Monitor problems across a VC's portfolio companies
-   - Identify systematic challenges in specific sectors
-   - "3 of a]'s portfolio companies are struggling with X"
-
-3. **YC/Accelerator Batch Analysis**
-   - Track problems discussed within accelerator batches
-   - Identify common challenges at specific stages
-   - Monitor batch Slack/forum discussions (where public)
-
-4. **Advisor/Investor Signal Extraction**
-   - Track what advisors are warning founders about
-   - Monitor investor Twitter threads about portfolio challenges
-   - Extract patterns from "what I wish founders knew" content
-
-#### 5.2.8 Feature: Implicit Problem Detection
-
-**Feature ID:** SPD-007
-**Priority:** P1 (High)
-**Complexity:** Very High
-
-**Description:** Detect problems that aren't explicitly stated but are implied through behavior and context.
-
-**Implicit Signals:**
-
-| Signal Type | Indicator | Problem Inference |
-|-------------|-----------|-------------------|
-| **Build vs Buy** | "We built our own X" posts | No good solution exists for X |
-| **Excessive Hiring** | 5+ job posts for same role | Retention issue or tooling gap |
-| **Workaround Sharing** | "Here's how we hack around X" | Fundamental tool limitation |
-| **Migration Announcements** | "We switched from X to Y" | X has critical limitations |
-| **Open Source Creation** | Startup releases internal tool | Filled a gap, others need it too |
-| **Integration Complaints** | "Getting X and Y to work together" | Integration/interop gap |
-| **Scale Breakpoints** | "X worked until we hit Y scale" | Tool doesn't scale |
-| **Manual Process Mentions** | "Our team manually does X" | Automation opportunity |
-
-**Detection Pipeline:**
-1. Monitor for implicit signal patterns in social content
-2. LLM-based inference of underlying problem
-3. Validate against explicit problem mentions
-4. Score confidence and add to problem database
-
-#### 5.2.9 Feature: Competitive Gap Analysis
-
-**Feature ID:** SPD-008
-**Priority:** P2 (Medium)
-**Complexity:** Medium
-
-**Description:** Analyze competitor products to identify gaps and pain points in the market.
-
-**Analysis Methods:**
-
-1. **Feature Comparison Mining**
-   - Scrape pricing/feature pages of competing products
-   - Build feature matrices across competitors
-   - Identify consistently missing features = market gap
-   - Track "coming soon" features across competitors
-
-2. **Changelog Velocity Analysis**
-   - Monitor product changelogs/release notes
-   - Identify areas of rapid development = active pain points
-   - Detect features that get rebuilt multiple times
-   - Track deprecations and pivots
-
-3. **Roadmap Extraction**
-   - Public roadmap pages (Canny, ProductBoard, etc.)
-   - Most-voted feature requests = validated pain points
-   - "Under consideration" items = acknowledged gaps
-   - Rejected requests with explanations = hard problems
-
-4. **Integration Ecosystem Gaps**
-   - Map integration offerings across competitors
-   - Identify missing integrations = workflow pain points
-   - Track "native vs Zapier" availability
-   - Monitor integration request forums
-
-5. **Pricing Tier Analysis**
-   - Analyze what features are gated at higher tiers
-   - High-tier-only features often = high-value pain points
-   - "Enterprise only" features = scaling challenges
-   - Price increases on specific features = demand signal
-
-#### 5.2.10 Feature: Real-Time Alert System
-
-**Feature ID:** SPD-009
-**Priority:** P1 (High)
-**Complexity:** Medium
-
-**Description:** Instant notifications when high-signal pain points are discovered.
-
-**Alert Triggers:**
-
-| Trigger | Threshold | Alert Type |
-|---------|-----------|------------|
-| High-credibility founder complaint | Credibility > 8/10 | Instant |
-| Viral problem thread | Engagement > 100 in 1hr | Instant |
-| Multiple startups same problem | 3+ in 24hrs | Daily digest |
-| New problem in tracked category | Any | Real-time |
-| Implicit signal from tracked startup | Any | Instant |
-| Research match for new problem | Score > 80 | Instant |
-
-**Alert Channels:**
-- In-app notifications
-- Email digest (configurable frequency)
-- Slack/Discord webhooks
-- API webhooks for custom integrations
-
----
-
-### Section 7.1 API: Startups, Problems, Founders, Alerts
+#### 2. Sync Startups Node (Crunchbase Integration)
 
 ```typescript
-// Startups API
-api.startups.list            // List tracked startups
-api.startups.get             // Get single startup
-api.startups.search          // Search startups
-api.startups.track           // Start tracking a startup
-api.startups.untrack         // Stop tracking
+// src/agents/problem-discovery/nodes/sync-startups.ts
+import { ProblemDiscoveryStateType } from "../state";
+import {
+  crunchbaseSearch,
+  crunchbaseGetDetails,
+} from "@/agents/tools/search/crunchbase";
+import { convexMutation, convexQuery } from "@/agents/tools/data/convex";
 
-// Startup Problems API
-api.problems.list            // List discovered problems
-api.problems.get             // Get single problem
-api.problems.search          // Semantic search problems
-api.problems.byStartup       // Get problems for a startup
-api.problems.byCategory      // Filter by category
-api.problems.clusters        // Get problem clusters
-api.problems.byDiscoveryMethod // Filter by how discovered
-api.problems.implicit        // List implicit signal problems
-api.problems.predicted       // Get predicted problems for stage
+interface StartupFilter {
+  fundingStage: ("series_a" | "series_b" | "series_c" | "series_d_plus")[];
+  fundingAmountMin: number;
+  foundedAfter: Date;
+  industries: string[];
+  employeeCountMin: number;
+  employeeCountMax: number;
+}
 
-// Founders API
-api.founders.list            // List tracked founders
-api.founders.get             // Get single founder
-api.founders.topCredibility  // High-signal founders
-api.founders.network         // Founder connection graph
+const DEFAULT_FILTER: StartupFilter = {
+  fundingStage: ["series_a", "series_b", "series_c"],
+  fundingAmountMin: 5_000_000, // $5M minimum
+  foundedAfter: new Date("2019-01-01"),
+  industries: [
+    "AI/ML",
+    "SaaS",
+    "FinTech",
+    "HealthTech",
+    "DevTools",
+    "Data Infrastructure",
+  ],
+  employeeCountMin: 20,
+  employeeCountMax: 500,
+};
 
-// Implicit Signals API
-api.implicitSignals.list     // List detected signals
-api.implicitSignals.byType   // Filter by signal type
-api.implicitSignals.convert  // Convert to formal problem
+export async function syncStartupsNode(
+  state: ProblemDiscoveryStateType
+): Promise<Partial<ProblemDiscoveryStateType>> {
+  console.log("[sync_startups] Syncing startup data from Crunchbase...");
 
-// Alerts API
-api.alerts.configure         // Set alert preferences
-api.alerts.list              // List recent alerts
-api.alerts.dismiss           // Dismiss an alert
+  const errors: ErrorInfo[] = [];
+
+  try {
+    // Get existing startups from Convex
+    const existingStartups = await convexQuery("startups:list", {
+      limit: 1000,
+    });
+
+    const existingIds = new Set(
+      existingStartups.map((s: any) => s.crunchbaseId)
+    );
+
+    // Search for new Series A+ startups
+    const searchResults = await crunchbaseSearch({
+      fundingRoundTypes: DEFAULT_FILTER.fundingStage,
+      fundingTotalMin: DEFAULT_FILTER.fundingAmountMin,
+      foundedOnAfter: DEFAULT_FILTER.foundedAfter.toISOString().split("T")[0],
+      categories: DEFAULT_FILTER.industries,
+      numEmployeesMin: DEFAULT_FILTER.employeeCountMin,
+      numEmployeesMax: DEFAULT_FILTER.employeeCountMax,
+      limit: 100,
+    });
+
+    // Process new startups
+    let newStartupsCount = 0;
+    for (const startup of searchResults.entities) {
+      if (existingIds.has(startup.uuid)) continue;
+
+      // Get detailed info
+      const details = await crunchbaseGetDetails(startup.uuid);
+
+      // Save to Convex
+      await convexMutation("startups:create", {
+        crunchbaseId: startup.uuid,
+        name: startup.properties.name,
+        description: startup.properties.short_description,
+        website: startup.properties.homepage_url,
+        industry: startup.properties.categories?.[0] || "Unknown",
+        fundingStage: mapFundingStage(details.funding_rounds),
+        totalFunding: details.funding_total?.value_usd || 0,
+        employeeCount: details.num_employees_enum || "unknown",
+        foundedDate: startup.properties.founded_on,
+        location: formatLocation(details.location_identifiers),
+        linkedinUrl: details.linkedin?.value,
+        twitterUrl: details.twitter?.value,
+        founders: extractFounders(details.founders),
+        investors: extractInvestors(details.investors),
+        lastSyncedAt: Date.now(),
+      });
+
+      newStartupsCount++;
+    }
+
+    console.log(`[sync_startups] Synced ${newStartupsCount} new startups`);
+  } catch (error) {
+    console.error("[sync_startups] Error syncing startups:", error);
+    errors.push({
+      node: "sync_startups",
+      error: `Failed to sync startups: ${error}`,
+      timestamp: new Date(),
+      recoverable: true,
+    });
+  }
+
+  return {
+    status: "extracting",
+    progress: {
+      ...state.progress,
+      currentNode: "sync_startups",
+    },
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
+function mapFundingStage(fundingRounds: any[]): string {
+  if (!fundingRounds?.length) return "unknown";
+  const lastRound = fundingRounds[fundingRounds.length - 1];
+  return lastRound.investment_type || "unknown";
+}
+
+function formatLocation(locations: any[]): string {
+  if (!locations?.length) return "Unknown";
+  const loc = locations[0];
+  return [loc.city, loc.region, loc.country].filter(Boolean).join(", ");
+}
+
+function extractFounders(founders: any[]): any[] {
+  if (!founders) return [];
+  return founders.map((f) => ({
+    name: f.properties?.full_name,
+    title: f.properties?.title,
+    linkedinUrl: f.properties?.linkedin?.value,
+    twitterUrl: f.properties?.twitter?.value,
+  }));
+}
+
+function extractInvestors(investors: any[]): string[] {
+  if (!investors) return [];
+  return investors.map((i) => i.properties?.name).filter(Boolean);
+}
+```
+
+#### 3. Extract Problems Node (LLM-Powered)
+
+```typescript
+// src/agents/problem-discovery/nodes/extract-problems.ts
+import { ProblemDiscoveryStateType, Problem } from "../state";
+import { openrouter } from "@/agents/tools/llm/openrouter";
+import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
+
+// Structured output schema for problem extraction
+const ProblemExtractionSchema = z.object({
+  problems: z.array(
+    z.object({
+      statement: z.string().describe("Clear, concise problem statement"),
+      category: z.object({
+        primary: z.enum(["technical", "operational", "product", "business"]),
+        secondary: z.string().describe("More specific subcategory"),
+        tertiary: z.string().optional().describe("Most specific level"),
+      }),
+      severity: z
+        .number()
+        .min(1)
+        .max(10)
+        .describe("How severe is this problem (1-10)"),
+      frequency: z
+        .enum(["low", "medium", "high"])
+        .describe("How often is this mentioned"),
+      urgency: z
+        .enum(["low", "medium", "high", "critical"])
+        .describe("How urgent is the need"),
+      addressability: z
+        .number()
+        .min(0)
+        .max(1)
+        .describe("Can research address this? (0-1 confidence)"),
+      evidence: z
+        .array(z.string())
+        .describe("Direct quotes or paraphrased evidence"),
+    })
+  ),
+  confidence: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("Overall extraction confidence"),
+});
+
+const EXTRACTION_PROMPT = `You are an expert at identifying startup pain points and challenges from social media content.
+
+Analyze the following content and extract any pain points, challenges, or unmet needs that startups might be facing.
+
+For each problem identified:
+1. Write a clear, actionable problem statement
+2. Categorize it (technical/operational/product/business + subcategory)
+3. Score severity (1-10 based on impact)
+4. Assess frequency (how often this type of problem is mentioned)
+5. Determine urgency (based on language and context)
+6. Estimate addressability (can academic research help solve this?)
+7. Extract direct evidence (quotes or key phrases)
+
+Focus on:
+- Infrastructure and scaling challenges
+- Developer productivity issues
+- Data quality and pipeline problems
+- Team coordination and process issues
+- Tooling gaps and limitations
+- Integration difficulties
+
+IMPORTANT: Only extract genuine pain points. Ignore promotional content, general discussions, or content without clear problems.
+
+Content to analyze:
+{content}
+
+Source: {source}
+Platform: {platform}`;
+
+export async function extractProblemsNode(
+  state: ProblemDiscoveryStateType
+): Promise<Partial<ProblemDiscoveryStateType>> {
+  console.log(
+    `[extract_problems] Processing ${state.rawResults.length} results...`
+  );
+
+  const extractedProblems: Problem[] = [];
+  const errors: ErrorInfo[] = [];
+
+  // Process in batches of 10 for efficiency
+  const BATCH_SIZE = 10;
+  const batches = chunkArray(state.rawResults, BATCH_SIZE);
+
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    console.log(
+      `[extract_problems] Processing batch ${i + 1}/${batches.length}`
+    );
+
+    // Process batch items in parallel
+    const batchPromises = batch.map(async (result) => {
+      try {
+        const content = result.highlights?.join("\n\n") || result.text;
+        if (!content || content.length < 50) return []; // Skip too-short content
+
+        const response = await openrouter.chat({
+          model: "anthropic/claude-3.5-sonnet",
+          messages: [
+            {
+              role: "user",
+              content: EXTRACTION_PROMPT.replace(
+                "{content}",
+                content.slice(0, 4000)
+              )
+                .replace("{source}", result.url)
+                .replace("{platform}", result.platform),
+            },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+        });
+
+        const parsed = ProblemExtractionSchema.parse(
+          JSON.parse(response.choices[0].message.content)
+        );
+
+        // Only keep high-confidence extractions
+        if (parsed.confidence < 0.6) return [];
+
+        return parsed.problems.map((p) => ({
+          id: uuidv4(),
+          sourceResultId: result.id,
+          statement: p.statement,
+          category: p.category,
+          severity: p.severity,
+          frequency: p.frequency,
+          urgency: p.urgency,
+          addressability: p.addressability,
+          evidence: p.evidence,
+        }));
+      } catch (error) {
+        console.error(
+          `[extract_problems] Failed to extract from ${result.url}:`,
+          error
+        );
+        return [];
+      }
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    extractedProblems.push(...batchResults.flat());
+
+    // Rate limiting between batches
+    if (i < batches.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  console.log(
+    `[extract_problems] Extracted ${extractedProblems.length} problems`
+  );
+
+  return {
+    extractedProblems,
+    status: "detecting_signals",
+    progress: {
+      ...state.progress,
+      currentNode: "extract_problems",
+      problemsExtracted: extractedProblems.length,
+    },
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
+```
+
+#### 4. Detect Implicit Signals Node
+
+```typescript
+// src/agents/problem-discovery/nodes/detect-implicit.ts
+import { ProblemDiscoveryStateType, ImplicitSignal } from "../state";
+import { openrouter } from "@/agents/tools/llm/openrouter";
+import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
+
+const SIGNAL_PATTERNS = {
+  build_vs_buy: [
+    /we built our own/i,
+    /had to write custom/i,
+    /nothing existed for/i,
+    /internal tool/i,
+  ],
+  excessive_hiring: [
+    /hiring .* same role/i,
+    /5\+ job posts/i,
+    /can't keep .* position filled/i,
+  ],
+  workaround_sharing: [
+    /here's how we hack/i,
+    /workaround for/i,
+    /found a way around/i,
+  ],
+  migration_announcement: [
+    /switched from .* to/i,
+    /migrated away from/i,
+    /replaced .* with/i,
+  ],
+  open_source_creation: [
+    /open sourced our/i,
+    /released .* as open source/i,
+    /published our internal/i,
+  ],
+  integration_complaint: [
+    /getting .* to work together/i,
+    /integration nightmare/i,
+    /doesn't play well with/i,
+  ],
+  scale_breakpoint: [
+    /worked until we hit/i,
+    /broke at scale/i,
+    /fell apart when we grew/i,
+  ],
+  manual_process: [
+    /manually do/i,
+    /by hand every/i,
+    /human in the loop/i,
+    /tedious process/i,
+  ],
+};
+
+const ImplicitSignalSchema = z.object({
+  signalType: z.enum([
+    "build_vs_buy",
+    "excessive_hiring",
+    "workaround_sharing",
+    "migration_announcement",
+    "open_source_creation",
+    "integration_complaint",
+    "scale_breakpoint",
+    "manual_process",
+  ]),
+  inferredProblem: z
+    .string()
+    .describe("The underlying problem implied by this signal"),
+  confidence: z.number().min(0).max(1).describe("Confidence in the inference"),
+  evidence: z.string().describe("The specific text that indicates this signal"),
+});
+
+const INFERENCE_PROMPT = `Analyze this content for implicit signals of startup problems.
+
+Implicit signals are behaviors or statements that IMPLY a problem without stating it directly:
+- "We built our own X" → No good solution exists for X
+- "Switched from X to Y" → X has critical limitations
+- "Our team manually does X" → Automation opportunity exists
+- "Here's our workaround for X" → Tool X has fundamental issues
+
+Content:
+{content}
+
+If you detect an implicit signal, identify:
+1. The signal type
+2. The underlying problem being implied
+3. Your confidence (0-1)
+4. The specific evidence
+
+Return null if no implicit signal is detected.`;
+
+export async function detectImplicitNode(
+  state: ProblemDiscoveryStateType
+): Promise<Partial<ProblemDiscoveryStateType>> {
+  console.log(
+    `[detect_implicit] Scanning ${state.rawResults.length} results for implicit signals...`
+  );
+
+  const implicitSignals: ImplicitSignal[] = [];
+
+  // First pass: pattern matching for quick detection
+  for (const result of state.rawResults) {
+    const content = result.text;
+
+    for (const [signalType, patterns] of Object.entries(SIGNAL_PATTERNS)) {
+      for (const pattern of patterns) {
+        const match = content.match(pattern);
+        if (match) {
+          // Found a potential signal, use LLM to analyze
+          try {
+            const response = await openrouter.chat({
+              model: "anthropic/claude-3.5-sonnet",
+              messages: [
+                {
+                  role: "user",
+                  content: INFERENCE_PROMPT.replace(
+                    "{content}",
+                    content.slice(0, 2000)
+                  ),
+                },
+              ],
+              response_format: { type: "json_object" },
+              temperature: 0.1,
+            });
+
+            const parsed = JSON.parse(response.choices[0].message.content);
+
+            if (parsed && parsed.signalType) {
+              const validated = ImplicitSignalSchema.parse(parsed);
+
+              if (validated.confidence >= 0.7) {
+                implicitSignals.push({
+                  id: uuidv4(),
+                  sourceResultId: result.id,
+                  signalType: validated.signalType,
+                  inferredProblem: validated.inferredProblem,
+                  confidence: validated.confidence,
+                  evidence: validated.evidence,
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`[detect_implicit] LLM inference failed:`, error);
+          }
+
+          break; // One signal per result
+        }
+      }
+    }
+  }
+
+  console.log(
+    `[detect_implicit] Detected ${implicitSignals.length} implicit signals`
+  );
+
+  return {
+    implicitSignals,
+    status: "clustering",
+    progress: {
+      ...state.progress,
+      currentNode: "detect_implicit",
+      signalsDetected: implicitSignals.length,
+    },
+  };
+}
+```
+
+#### 5. Cluster Problems Node (HDBSCAN)
+
+```typescript
+// src/agents/problem-discovery/nodes/cluster-problems.ts
+import { ProblemDiscoveryStateType, ProblemCluster } from "../state";
+import {
+  generateEmbedding,
+  batchGenerateEmbeddings,
+} from "@/agents/tools/embedding";
+import { openrouter } from "@/agents/tools/llm/openrouter";
+import { v4 as uuidv4 } from "uuid";
+import HDBSCAN from "hdbscanjs";
+
+export async function clusterProblemsNode(
+  state: ProblemDiscoveryStateType
+): Promise<Partial<ProblemDiscoveryStateType>> {
+  console.log(
+    `[cluster_problems] Clustering ${state.extractedProblems.length} problems...`
+  );
+
+  if (state.extractedProblems.length < 5) {
+    console.log("[cluster_problems] Not enough problems to cluster");
+    return {
+      clusteredProblems: [],
+      status: "saving",
+      progress: {
+        ...state.progress,
+        currentNode: "cluster_problems",
+        clustersFormed: 0,
+      },
+    };
+  }
+
+  // Generate embeddings for all problem statements
+  const statements = state.extractedProblems.map((p) => p.statement);
+  const embeddings = await batchGenerateEmbeddings(statements);
+
+  // Run HDBSCAN clustering
+  const clusterer = new HDBSCAN({
+    minClusterSize: 3,
+    minSamples: 2,
+    metric: "cosine",
+  });
+
+  const labels = clusterer.fit(embeddings);
+
+  // Group problems by cluster
+  const clusterGroups = new Map<number, string[]>();
+  labels.forEach((label, index) => {
+    if (label === -1) return; // Noise points
+    if (!clusterGroups.has(label)) {
+      clusterGroups.set(label, []);
+    }
+    clusterGroups.get(label)!.push(state.extractedProblems[index].id);
+  });
+
+  console.log(`[cluster_problems] Found ${clusterGroups.size} clusters`);
+
+  // Generate cluster summaries using LLM
+  const clusteredProblems: ProblemCluster[] = [];
+
+  for (const [clusterId, problemIds] of clusterGroups) {
+    const clusterProblems = problemIds.map(
+      (id) => state.extractedProblems.find((p) => p.id === id)!
+    );
+
+    const statementsText = clusterProblems
+      .map((p) => `- ${p.statement}`)
+      .join("\n");
+
+    // Generate cluster theme
+    const response = await openrouter.chat({
+      model: "anthropic/claude-3.5-sonnet",
+      messages: [
+        {
+          role: "user",
+          content: `Analyze these related startup problems and provide a concise theme and description.
+
+Problems:
+${statementsText}
+
+Respond with JSON:
+{
+  "theme": "Short theme (3-5 words)",
+  "description": "1-2 sentence description of the common thread"
+}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    });
+
+    const { theme, description } = JSON.parse(
+      response.choices[0].message.content
+    );
+
+    // Aggregate metadata
+    const industries = [
+      ...new Set(clusterProblems.map((p) => p.category.secondary)),
+    ];
+
+    const fundingStages = [
+      ...new Set(clusterProblems.map((p) => p.startupId).filter(Boolean)),
+    ];
+
+    clusteredProblems.push({
+      id: uuidv4(),
+      theme,
+      description,
+      problemIds,
+      size: problemIds.length,
+      industries,
+      fundingStages,
+      growthRate: 0, // Calculate from historical data
+    });
+  }
+
+  console.log(
+    `[cluster_problems] Generated ${clusteredProblems.length} cluster summaries`
+  );
+
+  return {
+    clusteredProblems,
+    status: "saving",
+    progress: {
+      ...state.progress,
+      currentNode: "cluster_problems",
+      clustersFormed: clusteredProblems.length,
+    },
+  };
+}
+```
+
+#### 6. Save to Database Node
+
+```typescript
+// src/agents/problem-discovery/nodes/save-to-db.ts
+import { ProblemDiscoveryStateType, SavedProblem } from "../state";
+import { convexMutation } from "@/agents/tools/data/convex";
+import { generateEmbedding } from "@/agents/tools/embedding";
+
+export async function saveToDbNode(
+  state: ProblemDiscoveryStateType
+): Promise<Partial<ProblemDiscoveryStateType>> {
+  console.log("[save_to_db] Persisting results to Convex...");
+
+  const savedProblems: SavedProblem[] = [];
+  const errors: ErrorInfo[] = [];
+
+  // Save problems
+  for (const problem of state.extractedProblems) {
+    try {
+      // Generate embedding for vector search
+      const embedding = await generateEmbedding(problem.statement);
+
+      const convexId = await convexMutation("startupProblems:create", {
+        statement: problem.statement,
+        category: problem.category,
+        severity: problem.severity,
+        frequency: problem.frequency,
+        urgency: problem.urgency,
+        addressability: problem.addressability,
+        evidence: problem.evidence,
+        embedding,
+        sourceUrl: state.rawResults.find((r) => r.id === problem.sourceResultId)
+          ?.url,
+        sourcePlatform: state.rawResults.find(
+          (r) => r.id === problem.sourceResultId
+        )?.platform,
+        discoveredAt: Date.now(),
+        discoveryMethod: "social_scan",
+      });
+
+      savedProblems.push({
+        convexId,
+        problemId: problem.id,
+        savedAt: new Date(),
+      });
+    } catch (error) {
+      console.error(
+        `[save_to_db] Failed to save problem ${problem.id}:`,
+        error
+      );
+      errors.push({
+        node: "save_to_db",
+        error: `Failed to save problem: ${error}`,
+        timestamp: new Date(),
+        recoverable: true,
+      });
+    }
+  }
+
+  // Save implicit signals
+  for (const signal of state.implicitSignals) {
+    try {
+      await convexMutation("implicitSignals:create", {
+        signalType: signal.signalType,
+        inferredProblem: signal.inferredProblem,
+        confidence: signal.confidence,
+        evidence: signal.evidence,
+        sourceUrl: state.rawResults.find((r) => r.id === signal.sourceResultId)
+          ?.url,
+        detectedAt: Date.now(),
+      });
+    } catch (error) {
+      console.error(`[save_to_db] Failed to save signal ${signal.id}:`, error);
+    }
+  }
+
+  // Save problem clusters
+  for (const cluster of state.clusteredProblems) {
+    try {
+      await convexMutation("problemClusters:create", {
+        theme: cluster.theme,
+        description: cluster.description,
+        problemIds: cluster.problemIds,
+        size: cluster.size,
+        industries: cluster.industries,
+        fundingStages: cluster.fundingStages,
+        growthRate: cluster.growthRate,
+        createdAt: Date.now(),
+      });
+    } catch (error) {
+      console.error(
+        `[save_to_db] Failed to save cluster ${cluster.id}:`,
+        error
+      );
+    }
+  }
+
+  console.log(
+    `[save_to_db] Saved ${savedProblems.length} problems, ${state.implicitSignals.length} signals, ${state.clusteredProblems.length} clusters`
+  );
+
+  return {
+    savedProblems,
+    status: "complete",
+    progress: {
+      ...state.progress,
+      currentNode: "save_to_db",
+    },
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
 ```
 
 ---
 
-### Appendix C: File Structure (lib/search/, lib/discovery/)
+## API Routes for Agent Control
 
+```typescript
+// src/app/api/agents/problem-discovery/trigger/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs";
+import { createProblemDiscoveryGraph } from "@/agents/problem-discovery/graph";
+import { ConvexHttpClient } from "convex/browser";
+import { v4 as uuidv4 } from "uuid";
+
+export async function POST(req: NextRequest) {
+  const { userId } = auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const convexClient = new ConvexHttpClient(
+    process.env.NEXT_PUBLIC_CONVEX_URL!
+  );
+  const graph = createProblemDiscoveryGraph(convexClient);
+
+  const threadId = uuidv4();
+
+  // Create task record
+  await convexClient.mutation("agentTasks:create", {
+    taskId: threadId,
+    agentType: "problem_discovery",
+    status: "running",
+    priority: "medium",
+    payload: {},
+    createdAt: Date.now(),
+  });
+
+  // Run graph in background
+  graph
+    .invoke(
+      { searchQueries: [] }, // Initial state
+      { configurable: { thread_id: threadId } }
+    )
+    .then(async (result) => {
+      await convexClient.mutation("agentTasks:update", {
+        taskId: threadId,
+        status: "completed",
+        result: {
+          problemsFound: result.extractedProblems.length,
+          signalsDetected: result.implicitSignals.length,
+          clustersFormed: result.clusteredProblems.length,
+        },
+        completedAt: Date.now(),
+      });
+    })
+    .catch(async (error) => {
+      await convexClient.mutation("agentTasks:update", {
+        taskId: threadId,
+        status: "failed",
+        error: error.message,
+        completedAt: Date.now(),
+      });
+    });
+
+  return NextResponse.json({
+    taskId: threadId,
+    message: "Problem discovery agent started",
+  });
+}
 ```
-lib/
-├── search/                   # Unified search layer
-│   ├── exa.ts                # Exa.ai client (primary)
-│   ├── tavily.ts             # Tavily client (backup)
-│   ├── perplexity.ts         # Perplexity client (real-time)
-│   ├── search-orchestrator.ts # Manages search providers
-│   └── query-templates.ts    # Pre-built search queries
-├── startup-data/             # Startup data enrichment
-│   └── crunchbase.ts         # Series A+ data
-├── discovery/                # Discovery algorithms
-│   ├── pain-point-extractor.ts
-│   ├── implicit-signals.ts
-│   ├── cohort-prediction.ts
-│   ├── network-intelligence.ts
-│   └── competitive-gaps.ts
-└── cache/                    # Search result caching
-    └── search-cache.ts
+
+---
+
+## Convex Functions (Data Persistence Only)
+
+```typescript
+// convex/startupProblems.ts
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+
+export const create = mutation({
+  args: {
+    statement: v.string(),
+    category: v.object({
+      primary: v.string(),
+      secondary: v.string(),
+      tertiary: v.optional(v.string()),
+    }),
+    severity: v.number(),
+    frequency: v.string(),
+    urgency: v.string(),
+    addressability: v.number(),
+    evidence: v.array(v.string()),
+    embedding: v.array(v.float64()),
+    sourceUrl: v.optional(v.string()),
+    sourcePlatform: v.optional(v.string()),
+    discoveredAt: v.number(),
+    discoveryMethod: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("startupProblems", args);
+  },
+});
+
+export const list = query({
+  args: {
+    limit: v.optional(v.number()),
+    category: v.optional(v.string()),
+    minSeverity: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let q = ctx.db.query("startupProblems");
+
+    if (args.category) {
+      q = q.filter((q) => q.eq(q.field("category.primary"), args.category));
+    }
+
+    if (args.minSeverity) {
+      q = q.filter((q) => q.gte(q.field("severity"), args.minSeverity));
+    }
+
+    return await q.order("desc").take(args.limit || 50);
+  },
+});
+
+export const search = query({
+  args: {
+    embedding: v.array(v.float64()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Vector similarity search
+    return await ctx.db
+      .query("startupProblems")
+      .withIndex("by_embedding")
+      .order("desc")
+      .take(args.limit || 20);
+  },
+});
+
+// convex/implicitSignals.ts
+export const create = mutation({
+  args: {
+    signalType: v.string(),
+    inferredProblem: v.string(),
+    confidence: v.number(),
+    evidence: v.string(),
+    sourceUrl: v.optional(v.string()),
+    detectedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("implicitSignals", args);
+  },
+});
+
+export const list = query({
+  args: {
+    signalType: v.optional(v.string()),
+    minConfidence: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let q = ctx.db.query("implicitSignals");
+
+    if (args.signalType) {
+      q = q.filter((q) => q.eq(q.field("signalType"), args.signalType));
+    }
+
+    if (args.minConfidence) {
+      q = q.filter((q) => q.gte(q.field("confidence"), args.minConfidence));
+    }
+
+    return await q.order("desc").take(50);
+  },
+});
+
+// convex/problemClusters.ts
+export const create = mutation({
+  args: {
+    theme: v.string(),
+    description: v.string(),
+    problemIds: v.array(v.string()),
+    size: v.number(),
+    industries: v.array(v.string()),
+    fundingStages: v.array(v.string()),
+    growthRate: v.number(),
+    createdAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("problemClusters", args);
+  },
+});
+
+export const list = query({
+  args: {
+    minSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let q = ctx.db.query("problemClusters");
+
+    if (args.minSize) {
+      q = q.filter((q) => q.gte(q.field("size"), args.minSize));
+    }
+
+    return await q.order("desc").take(50);
+  },
+});
+```
+
+---
+
+## Shared Tools Integration (from Plan 7)
+
+This agent uses the following shared tools from `src/agents/tools/`:
+
+| Tool Category | Tools Used                                                                                                |
+| ------------- | --------------------------------------------------------------------------------------------------------- |
+| **Search**    | `exaSearch`, `exaSimilaritySearch`, `tavilySearch`, `crunchbaseSearch`, `crunchbaseGetDetails` (RapidAPI) |
+| **YouTube**   | `youtubeTranscript`, `youtubeBatchTranscripts` (for founder interviews, podcasts, pitch talks)            |
+| **LLM**       | `openrouter.chat` (structured output with Zod)                                                            |
+| **Embedding** | `generateEmbedding`, `batchGenerateEmbeddings`                                                            |
+| **Data**      | `convexQuery`, `convexMutation`                                                                           |
+| **Cache**     | `searchCache.get`, `searchCache.set`                                                                      |
+
+See Plan 7 for full tool implementations.
+
+### YouTube Transcript Use Cases
+
+The YouTube Transcript tools enable discovery of pain points from video content:
+
+1. **Founder Interviews** - YC Startup School talks, podcast appearances, conference keynotes
+2. **Investor Q&A Sessions** - Questions asked reveal common challenges
+3. **Product Demos** - Pain points mentioned when explaining "why we built this"
+4. **Pivot Announcements** - Previous challenges that led to the pivot
+5. **Hiring Videos** - Team challenges and growth problems mentioned
+
+Example workflow:
+
+```typescript
+// Fetch transcript from founder interview
+const transcript = await youtubeTranscriptTool.invoke({
+  videoUrl: "https://youtube.com/watch?v=founder-talk-xyz",
+  language: "en",
+});
+
+// Extract pain points from transcript
+const painPoints = await extractProblemsFromText(transcript.data.fullText);
 ```
 
 ---
 
 ## Implementation Checklist
 
-### Week 13-14: Search Infrastructure
-- [ ] Implement Exa.ai client
-- [ ] Create Tavily fallback client
-- [ ] Implement Perplexity client
-- [ ] Build search orchestrator with failover
+### Phase 1: Core Infrastructure
+
+- [ ] Define LangGraph state schema with Annotations
+- [ ] Implement StateGraph with all nodes
+- [ ] Set up ConvexCheckpointer for state persistence
+- [ ] Integrate shared tools from Plan 7
+- [ ] Create API routes for agent control
+
+### Phase 2: Search & Discovery Nodes
+
+- [ ] Implement search_channels node with Exa.ai
+- [ ] Add Tavily fallback logic
 - [ ] Create query templates for all discovery patterns
-- [ ] Implement 24-hour result caching
+- [ ] Implement result deduplication
 
-### Week 15-16: Startup Tracking & Pain Point Extraction
-- [ ] Implement Crunchbase API integration
-- [ ] Create startup filtering system
-- [ ] Build pain point extraction LLM pipeline
-- [ ] Implement problem categorization
-- [ ] Create severity scoring algorithm
-- [ ] Build problem card generator
+### Phase 3: Startup Tracking
 
-### Week 17-18: Advanced Discovery & Alerts
-- [ ] Implement problem clustering (HDBSCAN)
-- [ ] Create implicit signal detection
-- [ ] Build founder network intelligence
-- [ ] Implement competitive gap analysis
-- [ ] Create real-time alert system
-- [ ] Build cohort-based prediction
+- [ ] Implement sync_startups node
+- [ ] Integrate Crunchbase API
+- [ ] Create startup filtering logic
+- [ ] Set up incremental sync (only new startups)
 
----
+### Phase 4: Problem Extraction
 
-## Convex Functions to Implement
+- [ ] Implement extract_problems node
+- [ ] Create LLM extraction prompts
+- [ ] Add Zod schema validation
+- [ ] Implement batch processing with rate limiting
 
-```typescript
-// convex/startups.ts
-export const list = query(...)
-export const get = query(...)
-export const search = query(...)
-export const track = mutation(...)
-export const untrack = mutation(...)
-export const create = mutation(...)
-export const update = mutation(...)
+### Phase 5: Advanced Detection
 
-// convex/problems.ts
-export const list = query(...)
-export const get = query(...)
-export const search = query(...)  // Vector search
-export const byStartup = query(...)
-export const byCategory = query(...)
-export const clusters = query(...)
-export const byDiscoveryMethod = query(...)
-export const implicit = query(...)
-export const predicted = query(...)
-export const create = mutation(...)
-export const update = mutation(...)
+- [ ] Implement detect_implicit node
+- [ ] Create pattern matching rules
+- [ ] Add LLM inference for implicit signals
+- [ ] Implement cluster_problems node with HDBSCAN
 
-// convex/founders.ts
-export const list = query(...)
-export const get = query(...)
-export const topCredibility = query(...)
-export const network = query(...)
-export const create = mutation(...)
+### Phase 6: Persistence & API
 
-// convex/implicitSignals.ts
-export const list = query(...)
-export const byType = query(...)
-export const convert = mutation(...)
-export const create = mutation(...)
-
-// convex/alerts.ts
-export const configure = mutation(...)
-export const list = query(...)
-export const dismiss = mutation(...)
-export const create = mutation(...)
-
-// convex/agents/problemDiscovery.ts
-export const run = action(...)
-export const scanSocialChannels = action(...)
-export const syncStartups = action(...)
-export const extractPainPoints = action(...)
-export const clusterProblems = action(...)
-export const detectImplicitSignals = action(...)
-export const predictProblems = action(...)
-
-// convex/crons.ts
-crons.interval("scan-social", { hours: 1 }, internal.agents.problemDiscovery.scanSocialChannels)
-crons.interval("sync-startups", { hours: 24 }, internal.agents.problemDiscovery.syncStartups)
-crons.interval("cluster-problems", { hours: 6 }, internal.agents.problemDiscovery.clusterProblems)
-```
+- [ ] Implement save_to_db node
+- [ ] Create Convex mutations for all data types
+- [ ] Add vector embedding generation
+- [ ] Create API routes for triggering and status
 
 ---
 
 ## Verification Criteria
 
+- [ ] LangGraph StateGraph compiles without errors
 - [ ] Exa.ai search returns relevant results
 - [ ] Fallback to Tavily works when Exa fails
 - [ ] Crunchbase integration syncs Series A+ startups
 - [ ] Pain points extracted with 85%+ accuracy
-- [ ] Problems categorized correctly
-- [ ] Severity scores correlate with urgency
+- [ ] Problems categorized correctly by LLM
+- [ ] Severity scores correlate with urgency language
 - [ ] Problem clustering produces coherent themes
 - [ ] Implicit signals detected and validated
-- [ ] Alerts trigger correctly based on thresholds
-- [ ] 24-hour caching reduces API costs
-- [ ] Processing completes in <1 hour for full scan
+- [ ] ConvexCheckpointer persists state across runs
+- [ ] Processing completes in <30 minutes for full scan
+- [ ] All shared tools from Plan 7 integrate correctly

@@ -1,14 +1,14 @@
 # Plan 3: Research Discovery Agent (Agent 1)
 
 **Timeline:** Weeks 7-12 (parallel)
-**Dependencies:** plan_1 (Foundation & Scaffolding)
+**Dependencies:** plan_1 (Foundation & Scaffolding), plan_7 (Agent Tools)
 **Parallel With:** plan_2, plan_4, plan_5, plan_6
 
 ---
 
 ## Overview
 
-The Research Discovery Agent is an autonomous system responsible for continuously monitoring arXiv, processing academic papers, extracting insights, and generating human-readable outputs with supporting visualizations.
+The Research Discovery Agent is an autonomous LangGraph-based system responsible for continuously monitoring arXiv, processing academic papers, extracting insights, and generating human-readable outputs with supporting visualizations.
 
 ---
 
@@ -16,10 +16,11 @@ The Research Discovery Agent is an autonomous system responsible for continuousl
 
 - arXiv API integration (RSS/API)
 - PDF processing pipeline (PyMuPDF)
-- LLM analysis engine (5-stage Claude chain)
+- LLM analysis engine (5-stage chain via OpenRouter)
 - Diagram generation (Mermaid, D3.js)
 - Vector embeddings (OpenAI)
-- Agent orchestrator
+- **LangGraph StateGraph orchestration**
+- **Convex state persistence**
 
 ---
 
@@ -30,7 +31,8 @@ The Research Discovery Agent is an autonomous system responsible for continuousl
 3. LLM analysis engine (RDA-003)
 4. Diagram generation system (RDA-004)
 5. Convex functions: papers, paperContent, insights, diagrams
-6. Agent orchestrator with scheduling
+6. **LangGraph StateGraph with nodes and edges**
+7. **Shared tools from Plan 7**
 
 ---
 
@@ -50,40 +52,770 @@ cd ../phronesis-agent1
 
 #### 5.1.1 Agent Overview
 
-The Research Discovery Agent is an autonomous system responsible for continuously monitoring arXiv, processing academic papers, extracting insights, and generating human-readable outputs with supporting visualizations.
+The Research Discovery Agent is an autonomous LangGraph-powered system responsible for continuously monitoring arXiv, processing academic papers, extracting insights, and generating human-readable outputs with supporting visualizations.
+
+#### 5.1.2 LangGraph StateGraph Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│              RESEARCH DISCOVERY AGENT ARCHITECTURE              │
+│           RESEARCH DISCOVERY AGENT - LANGGRAPH STATEGRAPH        │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │                    AGENT ORCHESTRATOR                     │  │
-│  │  • Manages agent lifecycle and state                      │  │
-│  │  • Coordinates sub-components                             │  │
-│  │  • Handles error recovery                                 │  │
-│  │  • Schedules processing tasks                             │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                              │                                  │
-│         ┌────────────────────┼────────────────────┐            │
-│         ▼                    ▼                    ▼            │
-│  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐     │
-│  │   FETCHER   │      │   ANALYZER  │      │  GENERATOR  │     │
-│  │  Component  │─────►│  Component  │─────►│  Component  │     │
-│  └─────────────┘      └─────────────┘      └─────────────┘     │
-│         │                    │                    │             │
-│         ▼                    ▼                    ▼             │
-│  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐     │
-│  │ • arXiv API │      │ • PDF Parse │      │ • Summaries │     │
-│  │ • RSS Feed  │      │ • LLM Chain │      │ • Diagrams  │     │
-│  │ • PDF DL    │      │ • Embedding │      │ • Reports   │     │
-│  │ • Metadata  │      │ • Classify  │      │ • Alerts    │     │
-│  └─────────────┘      └─────────────┘      └─────────────┘     │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    STATE DEFINITION                        │  │
+│  │  {                                                         │  │
+│  │    categories: string[]                                   │  │
+│  │    fetchedPapers: Paper[]                                 │  │
+│  │    processedPapers: ProcessedPaper[]                      │  │
+│  │    insights: Insight[]                                    │  │
+│  │    diagrams: Diagram[]                                    │  │
+│  │    errors: ErrorInfo[]                                    │  │
+│  │    status: "fetching" | "processing" | "analyzing" |      │  │
+│  │            "generating" | "complete" | "failed"           │  │
+│  │    progress: { total: number, current: number }           │  │
+│  │  }                                                         │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                      STATE GRAPH                           │  │
+│  │                                                            │  │
+│  │   START                                                    │  │
+│  │     │                                                      │  │
+│  │     ▼                                                      │  │
+│  │  ┌──────────────┐                                         │  │
+│  │  │ fetch_arxiv  │ ─── Fetch new papers from arXiv API     │  │
+│  │  └──────────────┘                                         │  │
+│  │          │                                                 │  │
+│  │          ▼                                                 │  │
+│  │  ┌──────────────┐                                         │  │
+│  │  │ process_pdfs │ ─── Download & extract PDF content      │  │
+│  │  └──────────────┘                                         │  │
+│  │          │                                                 │  │
+│  │          ▼                                                 │  │
+│  │  ┌──────────────┐                                         │  │
+│  │  │ analyze_llm  │ ─── 5-stage LLM analysis chain          │  │
+│  │  └──────────────┘                                         │  │
+│  │          │                                                 │  │
+│  │          ▼                                                 │  │
+│  │  ┌──────────────┐                                         │  │
+│  │  │gen_embeddings│ ─── Generate vector embeddings          │  │
+│  │  └──────────────┘                                         │  │
+│  │          │                                                 │  │
+│  │          ▼                                                 │  │
+│  │  ┌──────────────┐                                         │  │
+│  │  │ gen_diagrams │ ─── Generate Mermaid/D3 diagrams        │  │
+│  │  └──────────────┘                                         │  │
+│  │          │                                                 │  │
+│  │          ▼                                                 │  │
+│  │  ┌──────────────┐                                         │  │
+│  │  │  save_to_db  │ ─── Persist to Convex                   │  │
+│  │  └──────────────┘                                         │  │
+│  │          │                                                 │  │
+│  │          ▼                                                 │  │
+│  │        END                                                 │  │
+│  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 5.1.2 Feature: Paper Ingestion System
+#### 5.1.3 State Schema Definition
+
+```typescript
+// src/agents/research/state.ts
+import { Annotation } from "@langchain/langgraph";
+
+// Define the state schema using LangGraph Annotation
+export const ResearchAgentState = Annotation.Root({
+  // Input configuration
+  categories: Annotation<string[]>({
+    reducer: (_, next) => next,
+    default: () => ["cs.AI", "cs.LG", "cs.CL"],
+  }),
+
+  maxPapers: Annotation<number>({
+    reducer: (_, next) => next,
+    default: () => 50,
+  }),
+
+  // Fetched papers from arXiv
+  fetchedPapers: Annotation<ArxivPaper[]>({
+    reducer: (current, next) => [...current, ...next],
+    default: () => [],
+  }),
+
+  // Processed paper content
+  processedPapers: Annotation<ProcessedPaper[]>({
+    reducer: (current, next) => [...current, ...next],
+    default: () => [],
+  }),
+
+  // Generated insights
+  insights: Annotation<Insight[]>({
+    reducer: (current, next) => [...current, ...next],
+    default: () => [],
+  }),
+
+  // Generated diagrams
+  diagrams: Annotation<Diagram[]>({
+    reducer: (current, next) => [...current, ...next],
+    default: () => [],
+  }),
+
+  // Error tracking
+  errors: Annotation<ErrorInfo[]>({
+    reducer: (current, next) => [...current, ...next],
+    default: () => [],
+  }),
+
+  // Processing status
+  status: Annotation<ProcessingStatus>({
+    reducer: (_, next) => next,
+    default: () => "fetching",
+  }),
+
+  // Progress tracking
+  progress: Annotation<Progress>({
+    reducer: (_, next) => next,
+    default: () => ({ total: 0, current: 0, failed: 0 }),
+  }),
+});
+
+// Type definitions
+export interface ArxivPaper {
+  arxivId: string;
+  title: string;
+  authors: { name: string; affiliations?: string[] }[];
+  abstract: string;
+  categories: string[];
+  primaryCategory: string;
+  publishedDate: number;
+  updatedDate: number;
+  pdfUrl: string;
+}
+
+export interface ProcessedPaper extends ArxivPaper {
+  sections: Section[];
+  figures: Figure[];
+  tables: Table[];
+  equations: Equation[];
+  references: Reference[];
+}
+
+export interface Insight {
+  paperId: string;
+  problemStatement: string;
+  proposedSolution: string;
+  technicalApproach: string;
+  mainResults: string;
+  contributions: Contribution[];
+  statedLimitations: string[];
+  inferredWeaknesses: string[];
+  reproducibilityScore: number;
+  industryApplications: IndustryApplication[];
+  technologyReadinessLevel: number;
+  timeToCommercial: string;
+  enablingTechnologies: string[];
+  summaries: Summaries;
+  embedding?: number[];
+}
+
+export interface Diagram {
+  paperId: string;
+  diagramType: "architecture" | "flowchart" | "concept_map" | "comparison";
+  title: string;
+  description: string;
+  format: "mermaid" | "svg" | "d3";
+  content: string;
+}
+
+export type ProcessingStatus =
+  | "fetching"
+  | "processing"
+  | "analyzing"
+  | "generating"
+  | "saving"
+  | "complete"
+  | "failed";
+
+export interface Progress {
+  total: number;
+  current: number;
+  failed: number;
+}
+
+export interface ErrorInfo {
+  paperId?: string;
+  stage: string;
+  message: string;
+  timestamp: number;
+}
+
+export type ResearchAgentStateType = typeof ResearchAgentState.State;
+```
+
+#### 5.1.4 StateGraph Implementation
+
+```typescript
+// src/agents/research/graph.ts
+import { StateGraph, END, START } from "@langchain/langgraph";
+import { ResearchAgentState, ResearchAgentStateType } from "./state";
+import { fetchArxivNode } from "./nodes/fetch-arxiv";
+import { processPdfsNode } from "./nodes/process-pdfs";
+import { analyzeLlmNode } from "./nodes/analyze-llm";
+import { generateEmbeddingsNode } from "./nodes/generate-embeddings";
+import { generateDiagramsNode } from "./nodes/generate-diagrams";
+import { saveToDbNode } from "./nodes/save-to-db";
+import { ConvexCheckpointer } from "../checkpointer/convex";
+
+// Create the StateGraph
+const workflow = new StateGraph(ResearchAgentState)
+  // Add nodes
+  .addNode("fetch_arxiv", fetchArxivNode)
+  .addNode("process_pdfs", processPdfsNode)
+  .addNode("analyze_llm", analyzeLlmNode)
+  .addNode("generate_embeddings", generateEmbeddingsNode)
+  .addNode("generate_diagrams", generateDiagramsNode)
+  .addNode("save_to_db", saveToDbNode)
+
+  // Add edges (sequential flow)
+  .addEdge(START, "fetch_arxiv")
+  .addEdge("fetch_arxiv", "process_pdfs")
+  .addEdge("process_pdfs", "analyze_llm")
+  .addEdge("analyze_llm", "generate_embeddings")
+  .addEdge("generate_embeddings", "generate_diagrams")
+  .addEdge("generate_diagrams", "save_to_db")
+  .addEdge("save_to_db", END);
+
+// Compile with checkpointer for state persistence
+export const researchAgent = workflow.compile({
+  checkpointer: new ConvexCheckpointer(),
+});
+
+// Export for use by orchestrator
+export async function runResearchAgent(config: {
+  categories?: string[];
+  maxPapers?: number;
+  threadId: string;
+}) {
+  const initialState = {
+    categories: config.categories || ["cs.AI", "cs.LG", "cs.CL"],
+    maxPapers: config.maxPapers || 50,
+  };
+
+  const result = await researchAgent.invoke(initialState, {
+    configurable: { thread_id: config.threadId },
+  });
+
+  return result;
+}
+```
+
+#### 5.1.5 Node Implementations
+
+**Fetch arXiv Node:**
+
+```typescript
+// src/agents/research/nodes/fetch-arxiv.ts
+import { ResearchAgentStateType } from "../state";
+import { arxivTool } from "../../tools/search/arxiv";
+
+export async function fetchArxivNode(
+  state: ResearchAgentStateType
+): Promise<Partial<ResearchAgentStateType>> {
+  const { categories, maxPapers } = state;
+
+  try {
+    // Use shared tool from Plan 7
+    const papers = await arxivTool.invoke({
+      categories,
+      maxResults: maxPapers,
+      sortBy: "submittedDate",
+      sortOrder: "descending",
+    });
+
+    return {
+      fetchedPapers: papers,
+      status: "processing",
+      progress: { total: papers.length, current: 0, failed: 0 },
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      errors: [
+        {
+          stage: "fetch_arxiv",
+          message: error instanceof Error ? error.message : "Unknown error",
+          timestamp: Date.now(),
+        },
+      ],
+    };
+  }
+}
+```
+
+**Process PDFs Node:**
+
+```typescript
+// src/agents/research/nodes/process-pdfs.ts
+import { ResearchAgentStateType, ProcessedPaper, ErrorInfo } from "../state";
+import { pdfDownloadTool, pdfExtractTool } from "../../tools/pdf";
+
+export async function processPdfsNode(
+  state: ResearchAgentStateType
+): Promise<Partial<ResearchAgentStateType>> {
+  const { fetchedPapers, progress } = state;
+
+  const processedPapers: ProcessedPaper[] = [];
+  const errors: ErrorInfo[] = [];
+  let current = 0;
+  let failed = 0;
+
+  for (const paper of fetchedPapers) {
+    try {
+      // Download PDF
+      const pdfBuffer = await pdfDownloadTool.invoke({
+        url: paper.pdfUrl,
+        arxivId: paper.arxivId,
+      });
+
+      // Extract content using PyMuPDF via API
+      const extracted = await pdfExtractTool.invoke({
+        pdfBuffer,
+        extractFigures: true,
+        extractTables: true,
+        extractEquations: true,
+      });
+
+      processedPapers.push({
+        ...paper,
+        sections: extracted.sections,
+        figures: extracted.figures,
+        tables: extracted.tables,
+        equations: extracted.equations,
+        references: extracted.references,
+      });
+
+      current++;
+    } catch (error) {
+      failed++;
+      errors.push({
+        paperId: paper.arxivId,
+        stage: "process_pdfs",
+        message:
+          error instanceof Error ? error.message : "PDF processing failed",
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  return {
+    processedPapers,
+    status: "analyzing",
+    progress: { total: progress.total, current, failed },
+    errors,
+  };
+}
+```
+
+**Analyze LLM Node (5-Stage Chain):**
+
+```typescript
+// src/agents/research/nodes/analyze-llm.ts
+import { ResearchAgentStateType, Insight, ErrorInfo } from "../state";
+import { llmChatTool, llmStructuredTool } from "../../tools/llm";
+import { z } from "zod";
+
+// Zod schemas for structured output
+const ComprehensionSchema = z.object({
+  problemStatement: z.string(),
+  proposedSolution: z.string(),
+  technicalApproach: z.string(),
+  evaluationMethodology: z.string(),
+  mainResults: z.string(),
+});
+
+const ContributionSchema = z.object({
+  contributions: z.array(
+    z.object({
+      rank: z.number(),
+      contribution: z.string(),
+      noveltyScore: z.number().min(0).max(10),
+      evidenceStrength: z.number().min(0).max(10),
+    })
+  ),
+});
+
+const CriticalAnalysisSchema = z.object({
+  statedLimitations: z.array(z.string()),
+  inferredWeaknesses: z.array(z.string()),
+  reproducibilityScore: z.number().min(0).max(10),
+});
+
+const ImplicationSchema = z.object({
+  industryApplications: z.array(
+    z.object({
+      industry: z.string(),
+      application: z.string(),
+      feasibility: z.string(),
+    })
+  ),
+  technologyReadinessLevel: z.number().min(1).max(9),
+  timeToCommercial: z.string(),
+  enablingTechnologies: z.array(z.string()),
+});
+
+const SummarySchema = z.object({
+  technical: z.string().max(2500),
+  executive: z.string().max(1000),
+  tweet: z.string().max(280),
+  eli5: z.string().max(500),
+});
+
+export async function analyzeLlmNode(
+  state: ResearchAgentStateType
+): Promise<Partial<ResearchAgentStateType>> {
+  const { processedPapers, progress } = state;
+
+  const insights: Insight[] = [];
+  const errors: ErrorInfo[] = [];
+
+  for (const paper of processedPapers) {
+    try {
+      const fullText = paper.sections
+        .map((s) => `${s.title}\n${s.content}`)
+        .join("\n\n");
+
+      // Stage 1: Comprehension
+      const comprehension = await llmStructuredTool.invoke({
+        model: "anthropic/claude-3.5-sonnet",
+        schema: ComprehensionSchema,
+        prompt: `Analyze this academic paper and extract the key elements:
+
+Title: ${paper.title}
+Abstract: ${paper.abstract}
+
+Full Text:
+${fullText}
+
+Extract the problem statement, proposed solution, technical approach, evaluation methodology, and main results.`,
+      });
+
+      // Stage 2: Contribution Analysis
+      const contributions = await llmStructuredTool.invoke({
+        model: "anthropic/claude-3.5-sonnet",
+        schema: ContributionSchema,
+        prompt: `Based on this paper, identify and rank the novel contributions:
+
+Title: ${paper.title}
+Technical Approach: ${comprehension.technicalApproach}
+Main Results: ${comprehension.mainResults}
+
+Rank contributions by significance, assign novelty scores (0-10) and evidence strength (0-10).`,
+      });
+
+      // Stage 3: Critical Analysis
+      const critical = await llmStructuredTool.invoke({
+        model: "anthropic/claude-3.5-sonnet",
+        schema: CriticalAnalysisSchema,
+        prompt: `Critically analyze this paper for limitations and reproducibility:
+
+Title: ${paper.title}
+Problem: ${comprehension.problemStatement}
+Solution: ${comprehension.proposedSolution}
+Results: ${comprehension.mainResults}
+
+Identify stated limitations, infer potential weaknesses, and assess reproducibility (0-10).`,
+      });
+
+      // Stage 4: Implication Synthesis
+      const implications = await llmStructuredTool.invoke({
+        model: "anthropic/claude-3.5-sonnet",
+        schema: ImplicationSchema,
+        prompt: `Analyze the practical implications of this research:
+
+Title: ${paper.title}
+Problem: ${comprehension.problemStatement}
+Solution: ${comprehension.proposedSolution}
+Contributions: ${JSON.stringify(contributions.contributions)}
+
+Identify industry applications, assess Technology Readiness Level (TRL 1-9), estimate time to commercial viability, and list enabling technologies needed.`,
+      });
+
+      // Stage 5: Summary Generation
+      const summaries = await llmStructuredTool.invoke({
+        model: "anthropic/claude-3.5-sonnet",
+        schema: SummarySchema,
+        prompt: `Generate summaries of this paper at different levels:
+
+Title: ${paper.title}
+Abstract: ${paper.abstract}
+Problem: ${comprehension.problemStatement}
+Solution: ${comprehension.proposedSolution}
+Key Contributions: ${contributions.contributions.map((c) => c.contribution).join("; ")}
+TRL: ${implications.technologyReadinessLevel}
+
+Generate:
+1. Technical Summary (500 words) - for researchers
+2. Executive Summary (200 words) - for decision-makers
+3. Tweet Summary (280 chars) - for sharing
+4. ELI5 Summary (100 words) - for non-technical audiences`,
+      });
+
+      insights.push({
+        paperId: paper.arxivId,
+        problemStatement: comprehension.problemStatement,
+        proposedSolution: comprehension.proposedSolution,
+        technicalApproach: comprehension.technicalApproach,
+        mainResults: comprehension.mainResults,
+        contributions: contributions.contributions,
+        statedLimitations: critical.statedLimitations,
+        inferredWeaknesses: critical.inferredWeaknesses,
+        reproducibilityScore: critical.reproducibilityScore,
+        industryApplications: implications.industryApplications,
+        technologyReadinessLevel: implications.technologyReadinessLevel,
+        timeToCommercial: implications.timeToCommercial,
+        enablingTechnologies: implications.enablingTechnologies,
+        summaries,
+      });
+    } catch (error) {
+      errors.push({
+        paperId: paper.arxivId,
+        stage: "analyze_llm",
+        message: error instanceof Error ? error.message : "LLM analysis failed",
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  return {
+    insights,
+    status: "generating",
+    errors,
+  };
+}
+```
+
+**Generate Embeddings Node:**
+
+```typescript
+// src/agents/research/nodes/generate-embeddings.ts
+import { ResearchAgentStateType, Insight } from "../state";
+import { embeddingTool } from "../../tools/embedding";
+
+export async function generateEmbeddingsNode(
+  state: ResearchAgentStateType
+): Promise<Partial<ResearchAgentStateType>> {
+  const { insights } = state;
+
+  const insightsWithEmbeddings: Insight[] = [];
+
+  // Batch generate embeddings for efficiency
+  const texts = insights.map(
+    (insight) =>
+      `${insight.problemStatement} ${insight.proposedSolution} ${insight.technicalApproach}`
+  );
+
+  try {
+    const embeddings = await embeddingTool.invoke({
+      texts,
+      model: "text-embedding-3-small",
+    });
+
+    for (let i = 0; i < insights.length; i++) {
+      insightsWithEmbeddings.push({
+        ...insights[i],
+        embedding: embeddings[i],
+      });
+    }
+
+    return {
+      insights: insightsWithEmbeddings,
+    };
+  } catch (error) {
+    // Continue without embeddings if generation fails
+    return {
+      errors: [
+        {
+          stage: "generate_embeddings",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Embedding generation failed",
+          timestamp: Date.now(),
+        },
+      ],
+    };
+  }
+}
+```
+
+**Generate Diagrams Node:**
+
+```typescript
+// src/agents/research/nodes/generate-diagrams.ts
+import { ResearchAgentStateType, Diagram, Insight } from "../state";
+import { llmChatTool } from "../../tools/llm";
+
+export async function generateDiagramsNode(
+  state: ResearchAgentStateType
+): Promise<Partial<ResearchAgentStateType>> {
+  const { insights, processedPapers } = state;
+
+  const diagrams: Diagram[] = [];
+
+  for (const insight of insights) {
+    try {
+      // Generate architecture diagram
+      const architectureMermaid = await llmChatTool.invoke({
+        model: "anthropic/claude-3.5-sonnet",
+        prompt: `Generate a Mermaid flowchart diagram showing the architecture/methodology of this research:
+
+Problem: ${insight.problemStatement}
+Solution: ${insight.proposedSolution}
+Technical Approach: ${insight.technicalApproach}
+
+Return ONLY valid Mermaid flowchart syntax, starting with "flowchart TD" or "flowchart LR".`,
+      });
+
+      diagrams.push({
+        paperId: insight.paperId,
+        diagramType: "architecture",
+        title: "System Architecture",
+        description:
+          "Visual representation of the proposed solution architecture",
+        format: "mermaid",
+        content: architectureMermaid.trim(),
+      });
+
+      // Generate concept map for key contributions
+      const conceptMapMermaid = await llmChatTool.invoke({
+        model: "anthropic/claude-3.5-sonnet",
+        prompt: `Generate a Mermaid mindmap diagram showing the key concepts and their relationships:
+
+Main Contributions:
+${insight.contributions.map((c) => `- ${c.contribution}`).join("\n")}
+
+Enabling Technologies: ${insight.enablingTechnologies.join(", ")}
+
+Return ONLY valid Mermaid mindmap syntax, starting with "mindmap".`,
+      });
+
+      diagrams.push({
+        paperId: insight.paperId,
+        diagramType: "concept_map",
+        title: "Concept Map",
+        description: "Key concepts and their relationships",
+        format: "mermaid",
+        content: conceptMapMermaid.trim(),
+      });
+    } catch (error) {
+      // Continue without diagrams if generation fails for this paper
+      console.error(`Diagram generation failed for ${insight.paperId}:`, error);
+    }
+  }
+
+  return {
+    diagrams,
+  };
+}
+```
+
+**Save to Database Node:**
+
+```typescript
+// src/agents/research/nodes/save-to-db.ts
+import { ResearchAgentStateType } from "../state";
+import {
+  paperCreateTool,
+  paperContentCreateTool,
+  insightCreateTool,
+  diagramCreateTool,
+} from "../../tools/data";
+
+export async function saveToDbNode(
+  state: ResearchAgentStateType
+): Promise<Partial<ResearchAgentStateType>> {
+  const { processedPapers, insights, diagrams, progress } = state;
+
+  try {
+    // Save papers
+    for (const paper of processedPapers) {
+      const paperId = await paperCreateTool.invoke({
+        arxivId: paper.arxivId,
+        title: paper.title,
+        authors: paper.authors,
+        abstract: paper.abstract,
+        categories: paper.categories,
+        primaryCategory: paper.primaryCategory,
+        publishedDate: paper.publishedDate,
+        updatedDate: paper.updatedDate,
+        pdfUrl: paper.pdfUrl,
+        processingStatus: "complete",
+        version: 1,
+      });
+
+      // Save paper content
+      await paperContentCreateTool.invoke({
+        paperId,
+        sections: paper.sections,
+        figures: paper.figures,
+        tables: paper.tables,
+        equations: paper.equations,
+        references: paper.references,
+        processingTimestamp: Date.now(),
+      });
+
+      // Save insight for this paper
+      const insight = insights.find((i) => i.paperId === paper.arxivId);
+      if (insight) {
+        const insightId = await insightCreateTool.invoke({
+          paperId,
+          ...insight,
+          analysisTimestamp: Date.now(),
+          modelVersion: "anthropic/claude-3.5-sonnet",
+          confidenceScore: 0.85,
+        });
+
+        // Save diagrams for this paper
+        const paperDiagrams = diagrams.filter(
+          (d) => d.paperId === paper.arxivId
+        );
+        for (const diagram of paperDiagrams) {
+          await diagramCreateTool.invoke({
+            paperId,
+            insightId,
+            ...diagram,
+            generatedAt: Date.now(),
+          });
+        }
+      }
+    }
+
+    return {
+      status: "complete",
+      progress: { ...progress, current: progress.total },
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      errors: [
+        {
+          stage: "save_to_db",
+          message:
+            error instanceof Error ? error.message : "Database save failed",
+          timestamp: Date.now(),
+        },
+      ],
+    };
+  }
+}
+```
+
+---
+
+### Section 5.1.6: Feature Specifications
+
+#### Feature: Paper Ingestion System
 
 **Feature ID:** RDA-001
 **Priority:** P0 (Critical)
@@ -93,56 +825,16 @@ The Research Discovery Agent is an autonomous system responsible for continuousl
 
 **Functional Requirements:**
 
-| ID | Requirement | Acceptance Criteria |
-|----|-------------|---------------------|
-| RDA-001-01 | System shall fetch papers via arXiv API | Successfully retrieve papers with <1% error rate |
-| RDA-001-02 | System shall support configurable categories | Support all 150+ arXiv categories |
-| RDA-001-03 | System shall download PDF files | Store PDFs with <5s average download time |
-| RDA-001-04 | System shall extract metadata | Capture title, authors, abstract, dates, categories |
-| RDA-001-05 | System shall detect duplicates | 100% deduplication accuracy |
-| RDA-001-06 | System shall handle rate limits | Respect arXiv 3-second delay requirement |
+| ID         | Requirement                                  | Acceptance Criteria                                 |
+| ---------- | -------------------------------------------- | --------------------------------------------------- |
+| RDA-001-01 | System shall fetch papers via arXiv API      | Successfully retrieve papers with <1% error rate    |
+| RDA-001-02 | System shall support configurable categories | Support all 150+ arXiv categories                   |
+| RDA-001-03 | System shall download PDF files              | Store PDFs with <5s average download time           |
+| RDA-001-04 | System shall extract metadata                | Capture title, authors, abstract, dates, categories |
+| RDA-001-05 | System shall detect duplicates               | 100% deduplication accuracy                         |
+| RDA-001-06 | System shall handle rate limits              | Respect arXiv 3-second delay requirement            |
 
-**Technical Specification:**
-
-```typescript
-// convex/schema.ts - Paper ingestion schema
-papers: defineTable({
-  arxivId: v.string(),
-  title: v.string(),
-  authors: v.array(v.object({
-    name: v.string(),
-    affiliations: v.optional(v.array(v.string())),
-  })),
-  abstract: v.string(),
-  categories: v.array(v.string()),
-  primaryCategory: v.string(),
-  publishedDate: v.number(),
-  updatedDate: v.number(),
-  pdfUrl: v.string(),
-  pdfStorageId: v.optional(v.id("_storage")),
-  processingStatus: v.union(
-    v.literal("pending"),
-    v.literal("fetching"),
-    v.literal("analyzing"),
-    v.literal("complete"),
-    v.literal("failed")
-  ),
-  processingError: v.optional(v.string()),
-  version: v.number(),
-  citationCount: v.optional(v.number()),
-  doi: v.optional(v.string()),
-})
-  .index("by_arxiv_id", ["arxivId"])
-  .index("by_status", ["processingStatus"])
-  .index("by_category", ["primaryCategory"])
-  .index("by_date", ["publishedDate"])
-  .searchIndex("search_papers", {
-    searchField: "title",
-    filterFields: ["primaryCategory", "processingStatus"]
-  })
-```
-
-#### 5.1.3 Feature: PDF Processing Pipeline
+#### Feature: PDF Processing Pipeline
 
 **Feature ID:** RDA-002
 **Priority:** P0 (Critical)
@@ -152,180 +844,45 @@ papers: defineTable({
 
 **Functional Requirements:**
 
-| ID | Requirement | Acceptance Criteria |
-|----|-------------|---------------------|
-| RDA-002-01 | Extract text with section preservation | 95%+ section identification accuracy |
-| RDA-002-02 | Extract and OCR figures/diagrams | Capture 90%+ of figures with captions |
-| RDA-002-03 | Parse tables to structured format | 85%+ table structure accuracy |
-| RDA-002-04 | Handle LaTeX mathematical notation | Correctly render 99% of equations |
-| RDA-002-05 | Extract references/citations | 95%+ reference extraction accuracy |
-| RDA-002-06 | Process multi-column layouts | Handle 2-column academic format |
+| ID         | Requirement                            | Acceptance Criteria                   |
+| ---------- | -------------------------------------- | ------------------------------------- |
+| RDA-002-01 | Extract text with section preservation | 95%+ section identification accuracy  |
+| RDA-002-02 | Extract and OCR figures/diagrams       | Capture 90%+ of figures with captions |
+| RDA-002-03 | Parse tables to structured format      | 85%+ table structure accuracy         |
+| RDA-002-04 | Handle LaTeX mathematical notation     | Correctly render 99% of equations     |
+| RDA-002-05 | Extract references/citations           | 95%+ reference extraction accuracy    |
+| RDA-002-06 | Process multi-column layouts           | Handle 2-column academic format       |
 
-**Technical Implementation:**
-
-```typescript
-// convex/schema.ts - Paper content schema
-paperContent: defineTable({
-  paperId: v.id("papers"),
-  sections: v.array(v.object({
-    type: v.string(),
-    title: v.string(),
-    content: v.string(),
-    pageNumbers: v.array(v.number()),
-  })),
-  figures: v.array(v.object({
-    figureNumber: v.string(),
-    caption: v.string(),
-    imageStorageId: v.id("_storage"),
-    pageNumber: v.number(),
-  })),
-  tables: v.array(v.object({
-    tableNumber: v.string(),
-    caption: v.string(),
-    headers: v.array(v.string()),
-    rows: v.array(v.array(v.string())),
-    pageNumber: v.number(),
-  })),
-  equations: v.array(v.object({
-    latex: v.string(),
-    context: v.string(),
-    equationNumber: v.optional(v.string()),
-  })),
-  references: v.array(v.object({
-    referenceNumber: v.number(),
-    rawText: v.string(),
-    parsedTitle: v.optional(v.string()),
-    arxivId: v.optional(v.string()),
-  })),
-  processingTimestamp: v.number(),
-})
-  .index("by_paper", ["paperId"]),
-```
-
-#### 5.1.4 Feature: LLM Analysis Engine
+#### Feature: LLM Analysis Engine
 
 **Feature ID:** RDA-003
 **Priority:** P0 (Critical)
 **Complexity:** Very High
 
-**Description:** Multi-stage LLM pipeline for deep paper analysis, extracting insights, identifying contributions, and generating summaries at multiple detail levels.
+**Description:** Multi-stage LLM pipeline for deep paper analysis using OpenRouter.
 
 **LLM Chain Stages:**
 
-1. **Stage 1: COMPREHENSION**
-   - Problem statement extraction
-   - Proposed solution identification
-   - Technical approach description
-   - Evaluation methodology
-   - Main results
+1. **Stage 1: COMPREHENSION** - Problem, solution, approach, results
+2. **Stage 2: CONTRIBUTION ANALYSIS** - Novel contributions ranked
+3. **Stage 3: CRITICAL ANALYSIS** - Limitations and weaknesses
+4. **Stage 4: IMPLICATION SYNTHESIS** - Industry applications, TRL
+5. **Stage 5: SUMMARY GENERATION** - Technical, executive, tweet, ELI5
 
-2. **Stage 2: CONTRIBUTION ANALYSIS**
-   - Novel contributions (ranked)
-   - Comparison to prior work
-   - Technical innovations
-   - Methodological advances
-
-3. **Stage 3: CRITICAL ANALYSIS**
-   - Stated limitations
-   - Inferred weaknesses
-   - Reproducibility assessment
-   - Validity of claims
-
-4. **Stage 4: IMPLICATION SYNTHESIS**
-   - Industry applications
-   - Technology readiness level (TRL 1-9)
-   - Time to commercial viability
-   - Required enabling technologies
-   - Potential disruptions
-
-5. **Stage 5: SUMMARY GENERATION**
-   - Technical Summary (500 words) - for researchers
-   - Executive Summary (200 words) - for decision-makers
-   - Tweet Summary (280 chars) - for sharing
-   - ELI5 Summary (100 words) - for non-technical audiences
-
-**Insights Schema:**
-
-```typescript
-// convex/schema.ts - Insights schema
-insights: defineTable({
-  paperId: v.id("papers"),
-  problemStatement: v.string(),
-  proposedSolution: v.string(),
-  technicalApproach: v.string(),
-  mainResults: v.string(),
-  contributions: v.array(v.object({
-    rank: v.number(),
-    contribution: v.string(),
-    noveltyScore: v.number(),
-    evidenceStrength: v.number(),
-  })),
-  statedLimitations: v.array(v.string()),
-  inferredWeaknesses: v.array(v.string()),
-  reproducibilityScore: v.number(),
-  industryApplications: v.array(v.object({
-    industry: v.string(),
-    application: v.string(),
-    feasibility: v.string(),
-  })),
-  technologyReadinessLevel: v.number(),
-  timeToCommercial: v.string(),
-  enablingTechnologies: v.array(v.string()),
-  summaries: v.object({
-    technical: v.string(),
-    executive: v.string(),
-    tweet: v.string(),
-    eli5: v.string(),
-  }),
-  analysisTimestamp: v.number(),
-  modelVersion: v.string(),
-  confidenceScore: v.number(),
-  embedding: v.optional(v.array(v.float64())),
-})
-  .index("by_paper", ["paperId"])
-  .index("by_trl", ["technologyReadinessLevel"])
-  .vectorIndex("by_embedding", {
-    vectorField: "embedding",
-    dimensions: 1536,
-    filterFields: ["technologyReadinessLevel"]
-  }),
-```
-
-#### 5.1.5 Feature: Diagram Generation System
+#### Feature: Diagram Generation System
 
 **Feature ID:** RDA-004
 **Priority:** P1 (High)
 **Complexity:** High
 
-**Description:** Automatically generate visual diagrams to explain paper concepts, architectures, and relationships.
+**Description:** Automatically generate visual diagrams to explain paper concepts.
 
-**Diagram Types:**
-
-| Type | Use Case | Format |
-|------|----------|--------|
-| Architecture Diagram | System/model architecture | Mermaid flowchart / SVG |
-| Methodology Flowchart | Step-by-step process | Mermaid flowchart |
-| Comparison Matrix | Paper vs prior work | HTML Table / React |
-| Concept Map | Key concept relationships | D3.js Force Graph |
-| Technology Timeline | Research evolution | Recharts / D3.js |
-
-**Diagrams Schema:**
-
-```typescript
-// convex/schema.ts - Diagrams schema
-diagrams: defineTable({
-  paperId: v.id("papers"),
-  insightId: v.optional(v.id("insights")),
-  diagramType: v.string(),
-  title: v.string(),
-  description: v.string(),
-  format: v.string(),
-  content: v.string(),
-  generatedAt: v.number(),
-})
-  .index("by_paper", ["paperId"])
-  .index("by_insight", ["insightId"]),
-```
+| Type                  | Use Case                  | Format            |
+| --------------------- | ------------------------- | ----------------- |
+| Architecture Diagram  | System/model architecture | Mermaid flowchart |
+| Methodology Flowchart | Step-by-step process      | Mermaid flowchart |
+| Concept Map           | Key concept relationships | Mermaid mindmap   |
+| Comparison Matrix     | Paper vs prior work       | HTML Table        |
 
 ---
 
@@ -333,27 +890,22 @@ diagrams: defineTable({
 
 ```typescript
 // Papers API
-api.papers.list              // List papers with filters
-api.papers.get               // Get single paper
-api.papers.search            // Full-text search
-api.papers.getContent        // Get processed content
+api.papers.list; // List papers with filters
+api.papers.get; // Get single paper
+api.papers.search; // Full-text search
+api.papers.getContent; // Get processed content
 
 // Insights API
-api.insights.list            // List insights
-api.insights.get             // Get single insight
-api.insights.search          // Semantic search
-api.insights.byPaper         // Get insight for paper
+api.insights.list; // List insights
+api.insights.get; // Get single insight
+api.insights.search; // Semantic search
+api.insights.byPaper; // Get insight for paper
 
 // Diagrams API
-api.diagrams.list            // List diagrams
-api.diagrams.get             // Get single diagram
-api.diagrams.byPaper         // Get diagrams for paper
-api.diagrams.byInsight       // Get diagrams for insight
-
-// Agent API (internal)
-internal.agents.research.run
-internal.agents.research.processQueue
-internal.agents.research.retryFailed
+api.diagrams.list; // List diagrams
+api.diagrams.get; // Get single diagram
+api.diagrams.byPaper; // Get diagrams for paper
+api.diagrams.byInsight; // Get diagrams for insight
 ```
 
 ---
@@ -361,6 +913,7 @@ internal.agents.research.retryFailed
 ### Appendix A: arXiv Category Reference
 
 **Computer Science:**
+
 - cs.AI - Artificial Intelligence
 - cs.CL - Computation and Language
 - cs.CV - Computer Vision
@@ -370,9 +923,11 @@ internal.agents.research.retryFailed
 - cs.HC - Human-Computer Interaction
 
 **Statistics:**
+
 - stat.ML - Machine Learning
 
 **Physics:**
+
 - quant-ph - Quantum Physics
 - physics.comp-ph - Computational Physics
 
@@ -380,33 +935,38 @@ internal.agents.research.retryFailed
 
 ## Implementation Checklist
 
-### Week 7-8: Paper Ingestion
-- [ ] Implement arXiv API client
+### Week 7-8: LangGraph Setup & Paper Ingestion
+
+- [ ] Set up LangGraph StateGraph structure
+- [ ] Define state schema with Annotation
+- [ ] Implement fetch_arxiv node
+- [ ] Implement arXiv API client (uses tools from Plan 7)
 - [ ] Create RSS feed parser for new papers
 - [ ] Implement PDF download with rate limiting
 - [ ] Create metadata extraction pipeline
 - [ ] Implement duplicate detection
-- [ ] Set up Convex scheduled jobs for ingestion
-- [ ] Store PDFs in Convex File Storage
 
 ### Week 9-10: PDF Processing & LLM Analysis
-- [ ] Integrate PyMuPDF for PDF parsing
+
+- [ ] Implement process_pdfs node
+- [ ] Integrate PyMuPDF for PDF parsing (via API)
 - [ ] Implement section extraction
 - [ ] Create figure/table extraction pipeline
 - [ ] Implement LaTeX equation handling
-- [ ] Create reference extraction
-- [ ] Implement 5-stage LLM analysis chain
+- [ ] Implement analyze_llm node with 5-stage chain
 - [ ] Create prompt templates for each stage
-- [ ] Implement Claude API integration
+- [ ] Implement OpenRouter integration via tools
 
-### Week 11-12: Embeddings & Diagrams
-- [ ] Implement OpenAI embeddings generation
-- [ ] Store embeddings in Convex vector index
-- [ ] Implement semantic search on insights
-- [ ] Create Mermaid diagram generator
-- [ ] Create D3.js concept map generator
-- [ ] Implement comparison matrix generator
-- [ ] Create agent orchestrator with error recovery
+### Week 11-12: Embeddings, Diagrams & Persistence
+
+- [ ] Implement generate_embeddings node
+- [ ] Implement generate_diagrams node
+- [ ] Create Mermaid diagram templates
+- [ ] Implement save_to_db node
+- [ ] Create Convex data tools integration
+- [ ] Implement Convex checkpointer
+- [ ] Test full StateGraph flow
+- [ ] Error handling and retry logic
 
 ---
 
@@ -435,28 +995,17 @@ export const byPaper = query(...)
 export const byInsight = query(...)
 export const create = mutation(...)
 
-// convex/agents/research.ts
-export const run = action(...)
-export const processQueue = action(...)
-export const retryFailed = action(...)
-export const fetchPaper = action(...)
-export const processPdf = action(...)
-export const analyzePaper = action(...)
-export const generateDiagrams = action(...)
-export const generateEmbedding = action(...)
-
-// convex/crons.ts
-crons.interval("fetch-new-papers", { hours: 1 }, internal.agents.research.run)
-crons.interval("process-queue", { minutes: 5 }, internal.agents.research.processQueue)
+// NOTE: No crons.ts - agent is triggered via LangGraph orchestrator
 ```
 
 ---
 
 ## Verification Criteria
 
+- [ ] LangGraph StateGraph compiles without errors
 - [ ] Papers fetched from arXiv with <1% error rate
 - [ ] arXiv rate limits respected (3-second delay)
-- [ ] PDFs stored in Convex File Storage
+- [ ] PDFs processed and content extracted
 - [ ] PDF text extraction 95%+ accuracy
 - [ ] Figures and tables extracted correctly
 - [ ] All 5 LLM analysis stages produce output
@@ -464,6 +1013,7 @@ crons.interval("process-queue", { minutes: 5 }, internal.agents.research.process
 - [ ] All 4 summary types generated
 - [ ] Embeddings stored in vector index
 - [ ] Semantic search returns relevant results
-- [ ] Diagrams generated in correct format
-- [ ] Agent handles errors and retries failed papers
+- [ ] Diagrams generated in correct Mermaid format
+- [ ] State checkpointed to Convex correctly
+- [ ] Agent handles errors and continues processing
 - [ ] Processing completes in <5 minutes per paper
