@@ -438,7 +438,9 @@ export default defineSchema({
       digestFrequency: v.optional(
         v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))
       ),
-      theme: v.optional(v.union(v.literal("light"), v.literal("dark"), v.literal("system"))),
+      theme: v.optional(
+        v.union(v.literal("light"), v.literal("dark"), v.literal("system"))
+      ),
     }),
     onboardingCompleted: v.boolean(),
     lastActiveAt: v.number(),
@@ -484,7 +486,8 @@ export default defineSchema({
       v.literal("running"),
       v.literal("completed"),
       v.literal("failed"),
-      v.literal("cancelled")
+      v.literal("cancelled"),
+      v.literal("awaiting_approval")
     ),
     triggeredBy: v.union(
       v.literal("scheduled"),
@@ -517,38 +520,96 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_created", ["createdAt"]),
 
-  // Task queue for agent work items
+  // ============================================
+  // AGENT TASKS & APPROVALS
+  // ============================================
+
   agentTasks: defineTable({
-    taskType: v.string(),
+    agentType: v.union(
+      v.literal("research-ingestion"),
+      v.literal("insight-generation"),
+      v.literal("trend-analysis"),
+      v.literal("problem-discovery"),
+      v.literal("research-linking"),
+      v.literal("solution-synthesis")
+    ),
+    title: v.string(),
+    description: v.optional(v.string()),
     priority: v.union(
-      v.literal("low"),
-      v.literal("normal"),
+      v.literal("critical"),
       v.literal("high"),
-      v.literal("critical")
+      v.literal("medium"),
+      v.literal("low")
     ),
     status: v.union(
-      v.literal("pending"),
-      v.literal("processing"),
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("paused"),
       v.literal("completed"),
       v.literal("failed"),
       v.literal("cancelled")
     ),
-    payload: v.any(),
-    result: v.optional(v.any()),
-    error: v.optional(v.string()),
-    maxRetries: v.number(),
-    retryCount: v.number(),
-    assignedTo: v.optional(v.string()),
-    scheduledFor: v.optional(v.number()),
+    progress: v.optional(v.number()),
+    agentRunId: v.optional(v.id("agentRuns")),
+    payload: v.optional(v.any()),
+    triggeredBy: v.union(
+      v.literal("scheduled"),
+      v.literal("manual"),
+      v.literal("webhook"),
+      v.literal("dependency")
+    ),
+    createdAt: v.number(),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
   })
     .index("by_status", ["status"])
-    .index("by_priority_status", ["priority", "status"])
-    .index("by_task_type", ["taskType"])
-    .index("by_scheduled", ["scheduledFor"]),
+    .index("by_priority", ["priority"])
+    .index("by_agent_type", ["agentType"]),
+
+  agentApprovals: defineTable({
+    requestId: v.string(),
+    agentTaskId: v.optional(v.id("agentTasks")),
+    agentRunId: v.optional(v.id("agentRuns")),
+    agentType: v.union(
+      v.literal("research-ingestion"),
+      v.literal("insight-generation"),
+      v.literal("trend-analysis"),
+      v.literal("problem-discovery"),
+      v.literal("research-linking"),
+      v.literal("solution-synthesis")
+    ),
+    title: v.string(),
+    description: v.string(),
+    category: v.union(
+      v.literal("content-publish"),
+      v.literal("data-modification"),
+      v.literal("external-api"),
+      v.literal("resource-intensive"),
+      v.literal("security-sensitive"),
+      v.literal("other")
+    ),
+    data: v.optional(v.any()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("expired")
+    ),
+    reviewedBy: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    reviewNotes: v.optional(v.string()),
+    priority: v.union(
+      v.literal("critical"),
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low")
+    ),
+    expiresAt: v.optional(v.number()),
+    requestedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_agent_type", ["agentType"])
+    .index("by_priority", ["priority"]),
 
   // LangGraph state persistence for checkpoints
   agentCheckpoints: defineTable({
@@ -562,51 +623,6 @@ export default defineSchema({
     .index("by_thread", ["threadId"])
     .index("by_checkpoint", ["checkpointId"])
     .index("by_thread_and_checkpoint", ["threadId", "checkpointId"]),
-
-  // Human-in-the-loop approval requests
-  agentApprovals: defineTable({
-    requestId: v.string(),
-    agentRunId: v.optional(v.id("agentRuns")),
-    taskId: v.optional(v.id("agentTasks")),
-    approvalType: v.union(
-      v.literal("action"),
-      v.literal("output"),
-      v.literal("decision"),
-      v.literal("escalation")
-    ),
-    title: v.string(),
-    description: v.string(),
-    context: v.optional(v.any()),
-    options: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          label: v.string(),
-          description: v.optional(v.string()),
-        })
-      )
-    ),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("approved"),
-      v.literal("rejected"),
-      v.literal("expired")
-    ),
-    resolution: v.optional(
-      v.object({
-        selectedOption: v.optional(v.string()),
-        comment: v.optional(v.string()),
-        resolvedBy: v.optional(v.string()),
-        resolvedAt: v.number(),
-      })
-    ),
-    expiresAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_request_id", ["requestId"])
-    .index("by_status", ["status"])
-    .index("by_agent_run", ["agentRunId"])
-    .index("by_task", ["taskId"]),
 
   // Persistent key-value cache with TTL
   agentCache: defineTable({

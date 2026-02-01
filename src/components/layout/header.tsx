@@ -1,11 +1,44 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, User } from "lucide-react";
+import dynamic from "next/dynamic";
+
+function UserPlaceholder() {
+  return (
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+      <User className="h-4 w-4 text-muted-foreground" />
+    </div>
+  );
+}
+
+// Dynamically import the Clerk UserButton only when needed
+// This prevents the import from happening when Clerk is not configured
+const ClerkUserButton = dynamic(
+  () =>
+    import("@clerk/nextjs").then((mod) => ({
+      default: () => (
+        <mod.UserButton
+          afterSignOutUrl="/"
+          appearance={{
+            elements: {
+              avatarBox: "h-8 w-8",
+            },
+          }}
+        />
+      ),
+    })),
+  {
+    ssr: false,
+    loading: () => <UserPlaceholder />,
+  }
+);
 
 export function Header() {
+  // Check if Clerk is configured - this is baked in at build time
+  const clerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background px-6">
       <div className="flex flex-1 items-center gap-4">
@@ -24,14 +57,7 @@ export function Header() {
           <Bell className="h-5 w-5" />
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
         </Button>
-        <UserButton
-          afterSignOutUrl="/"
-          appearance={{
-            elements: {
-              avatarBox: "h-8 w-8",
-            },
-          }}
-        />
+        {clerkConfigured ? <ClerkUserButton /> : <UserPlaceholder />}
       </div>
     </header>
   );

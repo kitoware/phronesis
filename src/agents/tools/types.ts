@@ -98,7 +98,12 @@ export const ProblemCategorySchema = z.enum([
   "other",
 ]);
 
-export const ProblemSeveritySchema = z.enum(["low", "medium", "high", "critical"]);
+export const ProblemSeveritySchema = z.enum([
+  "low",
+  "medium",
+  "high",
+  "critical",
+]);
 
 export const ProblemStatusSchema = z.enum([
   "identified",
@@ -180,22 +185,41 @@ export const CacheSetSchema = CacheKeySchema.extend({
 });
 
 // Task schemas
-export const TaskPrioritySchema = z.enum(["low", "normal", "high", "critical"]);
+export const TaskPrioritySchema = z.enum(["critical", "high", "medium", "low"]);
 
 export const TaskStatusSchema = z.enum([
-  "pending",
-  "processing",
+  "queued",
+  "running",
+  "paused",
   "completed",
   "failed",
   "cancelled",
 ]);
 
+export const TriggerTypeSchema = z.enum([
+  "scheduled",
+  "manual",
+  "webhook",
+  "dependency",
+]);
+
+export const AgentTypeSchema = z.enum([
+  "research-ingestion",
+  "insight-generation",
+  "trend-analysis",
+  "problem-discovery",
+  "research-linking",
+  "solution-synthesis",
+]);
+
 // Approval schemas
-export const ApprovalTypeSchema = z.enum([
-  "action",
-  "output",
-  "decision",
-  "escalation",
+export const ApprovalCategorySchema = z.enum([
+  "content-publish",
+  "data-modification",
+  "external-api",
+  "resource-intensive",
+  "security-sensitive",
+  "other",
 ]);
 
 export const ApprovalStatusSchema = z.enum([
@@ -225,5 +249,7 @@ export type CacheKey = z.infer<typeof CacheKeySchema>;
 export type CacheSet = z.infer<typeof CacheSetSchema>;
 export type TaskPriority = z.infer<typeof TaskPrioritySchema>;
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
-export type ApprovalType = z.infer<typeof ApprovalTypeSchema>;
+export type TriggerType = z.infer<typeof TriggerTypeSchema>;
+export type AgentType = z.infer<typeof AgentTypeSchema>;
+export type ApprovalCategory = z.infer<typeof ApprovalCategorySchema>;
 export type ApprovalStatus = z.infer<typeof ApprovalStatusSchema>;

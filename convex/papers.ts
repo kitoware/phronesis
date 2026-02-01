@@ -25,7 +25,10 @@ export const list = query({
         .order("desc")
         .take(args.limit ?? 20);
     }
-    return await ctx.db.query("papers").order("desc").take(args.limit ?? 20);
+    return await ctx.db
+      .query("papers")
+      .order("desc")
+      .take(args.limit ?? 20);
   },
 });
 
@@ -141,8 +144,10 @@ export const getStats = query({
     const stats = {
       total: papers.length,
       pending: papers.filter((p) => p.processingStatus === "pending").length,
-      processing: papers.filter((p) => p.processingStatus === "processing").length,
-      completed: papers.filter((p) => p.processingStatus === "completed").length,
+      processing: papers.filter((p) => p.processingStatus === "processing")
+        .length,
+      completed: papers.filter((p) => p.processingStatus === "completed")
+        .length,
       failed: papers.filter((p) => p.processingStatus === "failed").length,
     };
 

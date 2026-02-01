@@ -39,11 +39,18 @@ export const searchSimilar = action({
     embedding: v.array(v.float64()),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args): Promise<(Doc<"insights"> & { _score: number })[]> => {
-    const vectorResults = await ctx.vectorSearch("insights", "vector_insights", {
-      vector: args.embedding,
-      limit: args.limit ?? 10,
-    });
+  handler: async (
+    ctx,
+    args
+  ): Promise<(Doc<"insights"> & { _score: number })[]> => {
+    const vectorResults = await ctx.vectorSearch(
+      "insights",
+      "vector_insights",
+      {
+        vector: args.embedding,
+        limit: args.limit ?? 10,
+      }
+    );
 
     // Fetch full documents
     const ids = vectorResults.map((r) => r._id);
@@ -118,7 +125,8 @@ export const getStats = query({
       total: insights.length,
       avgKeyFindings:
         insights.length > 0
-          ? insights.reduce((acc, i) => acc + i.keyFindings.length, 0) / insights.length
+          ? insights.reduce((acc, i) => acc + i.keyFindings.length, 0) /
+            insights.length
           : 0,
     };
   },

@@ -2,21 +2,17 @@
 
 import { ReactNode, useMemo } from "react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { ConvexReactClient } from "convex/react";
+import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 
-function ConvexProviderWrapper({
+function ConvexProviderWithClerkWrapper({
   children,
   convex,
 }: {
   children: ReactNode;
-  convex: ConvexReactClient | null;
+  convex: ConvexReactClient;
 }) {
   const auth = useAuth();
-
-  if (!convex) {
-    return <>{children}</>;
-  }
 
   return (
     <ConvexProviderWithClerk client={convex} useAuth={() => auth}>
@@ -36,14 +32,22 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
     return new ConvexReactClient(convexUrl);
   }, [convexUrl]);
 
-  // If Clerk key is not available, render without providers (for build time)
-  if (!clerkKey) {
+  // If Convex is not configured, just render children
+  if (!convex) {
     return <>{children}</>;
   }
 
+  // If Clerk is not configured, provide Convex without auth
+  if (!clerkKey) {
+    return <ConvexProvider client={convex}>{children}</ConvexProvider>;
+  }
+
+  // Both Convex and Clerk are configured
   return (
     <ClerkProvider publishableKey={clerkKey}>
-      <ConvexProviderWrapper convex={convex}>{children}</ConvexProviderWrapper>
+      <ConvexProviderWithClerkWrapper convex={convex}>
+        {children}
+      </ConvexProviderWithClerkWrapper>
     </ClerkProvider>
   );
 }

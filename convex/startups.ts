@@ -28,7 +28,10 @@ export const list = query({
         .order("desc")
         .take(args.limit ?? 20);
     }
-    return await ctx.db.query("startups").order("desc").take(args.limit ?? 20);
+    return await ctx.db
+      .query("startups")
+      .order("desc")
+      .take(args.limit ?? 20);
   },
 });
 

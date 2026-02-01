@@ -1,66 +1,64 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-export const create = mutation({
+const agentTypeValidator = v.union(
+  v.literal("research-ingestion"),
+  v.literal("insight-generation"),
+  v.literal("trend-analysis"),
+  v.literal("problem-discovery"),
+  v.literal("research-linking"),
+  v.literal("solution-synthesis")
+);
+
+const priorityValidator = v.union(
+  v.literal("critical"),
+  v.literal("high"),
+  v.literal("medium"),
+  v.literal("low")
+);
+
+const statusValidator = v.union(
+  v.literal("pending"),
+  v.literal("approved"),
+  v.literal("rejected"),
+  v.literal("expired")
+);
+
+const categoryValidator = v.union(
+  v.literal("content-publish"),
+  v.literal("data-modification"),
+  v.literal("external-api"),
+  v.literal("resource-intensive"),
+  v.literal("security-sensitive"),
+  v.literal("other")
+);
+
+export const list = query({
   args: {
-    requestId: v.string(),
-    agentRunId: v.optional(v.id("agentRuns")),
-    taskId: v.optional(v.id("agentTasks")),
-    approvalType: v.union(
-      v.literal("action"),
-      v.literal("output"),
-      v.literal("decision"),
-      v.literal("escalation")
-    ),
-    title: v.string(),
-    description: v.string(),
-    context: v.optional(v.any()),
-    options: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          label: v.string(),
-          description: v.optional(v.string()),
-        })
-      )
-    ),
-    expiresAt: v.optional(v.number()),
+    status: v.optional(statusValidator),
+    agentType: v.optional(agentTypeValidator),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("agentApprovals")
-      .withIndex("by_request_id", (q) => q.eq("requestId", args.requestId))
-      .first();
+    const limit = args.limit ?? 50;
 
-    if (existing) {
-      throw new Error(`Approval request ${args.requestId} already exists`);
+    if (args.status) {
+      return await ctx.db
+        .query("agentApprovals")
+        .withIndex("by_status", (q) => q.eq("status", args.status!))
+        .order("desc")
+        .take(limit);
     }
 
-    return await ctx.db.insert("agentApprovals", {
-      requestId: args.requestId,
-      agentRunId: args.agentRunId,
-      taskId: args.taskId,
-      approvalType: args.approvalType,
-      title: args.title,
-      description: args.description,
-      context: args.context,
-      options: args.options,
-      status: "pending",
-      expiresAt: args.expiresAt,
-      createdAt: Date.now(),
-    });
-  },
-});
+    if (args.agentType) {
+      return await ctx.db
+        .query("agentApprovals")
+        .withIndex("by_agent_type", (q) => q.eq("agentType", args.agentType!))
+        .order("desc")
+        .take(limit);
+    }
 
-export const getByRequestId = query({
-  args: {
-    requestId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("agentApprovals")
-      .withIndex("by_request_id", (q) => q.eq("requestId", args.requestId))
-      .first();
+    return await ctx.db.query("agentApprovals").order("desc").take(limit);
   },
 });
 
@@ -69,90 +67,148 @@ export const listPending = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-
-    const pending = await ctx.db
+    const limit = args.limit ?? 50;
+    return await ctx.db
       .query("agentApprovals")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .collect();
-
-    const active = pending.filter((a) => !a.expiresAt || a.expiresAt > now);
-
-    active.sort((a, b) => a.createdAt - b.createdAt);
-
-    if (args.limit) {
-      return active.slice(0, args.limit);
-    }
-
-    return active;
+      .order("desc")
+      .take(limit);
   },
 });
 
-export const resolve = mutation({
-  args: {
-    requestId: v.string(),
-    status: v.union(v.literal("approved"), v.literal("rejected")),
-    selectedOption: v.optional(v.string()),
-    comment: v.optional(v.string()),
-    resolvedBy: v.optional(v.string()),
-  },
+export const getById = query({
+  args: { id: v.id("agentApprovals") },
   handler: async (ctx, args) => {
-    const approval = await ctx.db
-      .query("agentApprovals")
-      .withIndex("by_request_id", (q) => q.eq("requestId", args.requestId))
-      .first();
-
-    if (!approval) {
-      throw new Error(`Approval request ${args.requestId} not found`);
-    }
-
-    if (approval.status !== "pending") {
-      throw new Error(
-        `Approval request ${args.requestId} is already ${approval.status}`
-      );
-    }
-
-    await ctx.db.patch(approval._id, {
-      status: args.status,
-      resolution: {
-        selectedOption: args.selectedOption,
-        comment: args.comment,
-        resolvedBy: args.resolvedBy,
-        resolvedAt: Date.now(),
-      },
-    });
-
-    return await ctx.db.get(approval._id);
+    return await ctx.db.get(args.id);
   },
 });
 
-export const expireOld = mutation({
+export const getByRequestId = query({
+  args: { requestId: v.string() },
+  handler: async (ctx, args) => {
+    const approvals = await ctx.db.query("agentApprovals").collect();
+    return approvals.find((a) => a.requestId === args.requestId) ?? null;
+  },
+});
+
+export const countPending = query({
   args: {},
   handler: async (ctx) => {
-    const now = Date.now();
-
     const pending = await ctx.db
       .query("agentApprovals")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect();
-
-    const expired = pending.filter((a) => a.expiresAt && a.expiresAt <= now);
-
-    for (const approval of expired) {
-      await ctx.db.patch(approval._id, {
-        status: "expired",
-      });
-    }
-
-    return expired.length;
+    return pending.length;
   },
 });
 
-export const get = query({
+export const create = mutation({
   args: {
-    approvalId: v.id("agentApprovals"),
+    requestId: v.string(),
+    agentTaskId: v.optional(v.id("agentTasks")),
+    agentRunId: v.optional(v.id("agentRuns")),
+    agentType: agentTypeValidator,
+    title: v.string(),
+    description: v.string(),
+    category: categoryValidator,
+    data: v.optional(v.any()),
+    priority: priorityValidator,
+    expiresAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.approvalId);
+    return await ctx.db.insert("agentApprovals", {
+      requestId: args.requestId,
+      agentTaskId: args.agentTaskId,
+      agentRunId: args.agentRunId,
+      agentType: args.agentType,
+      title: args.title,
+      description: args.description,
+      category: args.category,
+      data: args.data,
+      status: "pending",
+      priority: args.priority,
+      expiresAt: args.expiresAt,
+      requestedAt: Date.now(),
+    });
+  },
+});
+
+export const approve = mutation({
+  args: {
+    id: v.id("agentApprovals"),
+    reviewedBy: v.optional(v.id("users")),
+    reviewNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      status: "approved",
+      reviewedBy: args.reviewedBy,
+      reviewedAt: Date.now(),
+      reviewNotes: args.reviewNotes,
+    });
+  },
+});
+
+export const reject = mutation({
+  args: {
+    id: v.id("agentApprovals"),
+    reviewedBy: v.optional(v.id("users")),
+    reviewNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      status: "rejected",
+      reviewedBy: args.reviewedBy,
+      reviewedAt: Date.now(),
+      reviewNotes: args.reviewNotes,
+    });
+  },
+});
+
+export const expire = mutation({
+  args: { id: v.id("agentApprovals") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      status: "expired",
+      reviewedAt: Date.now(),
+    });
+  },
+});
+
+export const getStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const approvals = await ctx.db.query("agentApprovals").collect();
+
+    const byStatus = approvals.reduce(
+      (acc, a) => {
+        acc[a.status] = (acc[a.status] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    const byAgentType = approvals.reduce(
+      (acc, a) => {
+        acc[a.agentType] = (acc[a.agentType] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    const byCategory = approvals.reduce(
+      (acc, a) => {
+        acc[a.category] = (acc[a.category] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    return {
+      total: approvals.length,
+      byStatus,
+      byAgentType,
+      byCategory,
+    };
   },
 });

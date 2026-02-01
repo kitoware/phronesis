@@ -35,7 +35,9 @@ export {
   CacheSetSchema,
   TaskPrioritySchema,
   TaskStatusSchema,
-  ApprovalTypeSchema,
+  TriggerTypeSchema,
+  AgentTypeSchema,
+  ApprovalCategorySchema,
   ApprovalStatusSchema,
 } from "./types";
 

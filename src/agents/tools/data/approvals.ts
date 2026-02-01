@@ -2,7 +2,11 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { getConvexClient, api } from "./client";
 import type { ToolResult } from "../types";
-import { ApprovalTypeSchema } from "../types";
+import {
+  ApprovalCategorySchema,
+  TaskPrioritySchema,
+  AgentTypeSchema,
+} from "../types";
 import { wrapToolError, wrapToolSuccess } from "../utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,26 +18,18 @@ type AnyId = any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const agentApprovalsApi = (api as any).agentApprovals;
 
-const ApprovalOptionSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  description: z.string().optional(),
-});
-
 const RequestApprovalSchema = z.object({
   requestId: z.string().describe("Unique identifier for this approval request"),
+  agentTaskId: z.string().optional().describe("Associated task ID"),
   agentRunId: z.string().optional().describe("Associated agent run ID"),
-  taskId: z.string().optional().describe("Associated task ID"),
-  approvalType: ApprovalTypeSchema.describe("Type of approval needed"),
+  agentType: AgentTypeSchema.describe("Type of agent requesting approval"),
   title: z.string().describe("Short title for the approval"),
   description: z
     .string()
     .describe("Detailed description of what needs approval"),
-  context: z.unknown().optional().describe("Additional context data"),
-  options: z
-    .array(ApprovalOptionSchema)
-    .optional()
-    .describe("Available choices"),
+  category: ApprovalCategorySchema.describe("Category of approval"),
+  data: z.unknown().optional().describe("Additional data for the approval"),
+  priority: TaskPrioritySchema.describe("Priority of the approval request"),
   expiresAt: z.number().optional().describe("Unix timestamp when this expires"),
 });
 
@@ -44,13 +40,14 @@ export const requestApprovalTool = tool(
       const client = getConvexClient();
       const id = await client.mutation(agentApprovalsApi.create, {
         requestId: input.requestId,
+        agentTaskId: input.agentTaskId as AnyId,
         agentRunId: input.agentRunId as AnyId,
-        taskId: input.taskId as AnyId,
-        approvalType: input.approvalType,
+        agentType: input.agentType,
         title: input.title,
         description: input.description,
-        context: input.context,
-        options: input.options,
+        category: input.category,
+        data: input.data,
+        priority: input.priority,
         expiresAt: input.expiresAt,
       });
       return wrapToolSuccess({ id: String(id) }, startTime);
@@ -79,7 +76,8 @@ export const checkApprovalTool = tool(
       return wrapToolSuccess(
         {
           status: approval.status,
-          resolution: approval.resolution,
+          reviewedAt: approval.reviewedAt,
+          reviewNotes: approval.reviewNotes,
         },
         startTime
       );
@@ -118,36 +116,69 @@ export const listPendingApprovalsTool = tool(
   }
 );
 
-export const resolveApprovalTool = tool(
-  async (input): Promise<ToolResult<unknown>> => {
+export const approveRequestTool = tool(
+  async (input): Promise<ToolResult<void>> => {
     const startTime = Date.now();
     try {
       const client = getConvexClient();
-      const result = await client.mutation(agentApprovalsApi.resolve, {
-        requestId: input.requestId,
-        status: input.status,
-        selectedOption: input.selectedOption,
-        comment: input.comment,
-        resolvedBy: input.resolvedBy,
+      await client.mutation(agentApprovalsApi.approve, {
+        id: input.approvalId as AnyId,
+        reviewNotes: input.reviewNotes,
       });
-      return wrapToolSuccess(result, startTime);
+      return wrapToolSuccess(undefined, startTime);
     } catch (error) {
       return wrapToolError(error, startTime);
     }
   },
   {
-    name: "resolve_approval",
-    description: "Resolves an approval request (approve or reject)",
+    name: "approve_request",
+    description: "Approves a pending approval request",
     schema: z.object({
-      requestId: z.string().describe("The unique request ID to resolve"),
-      status: z.enum(["approved", "rejected"]).describe("Resolution decision"),
-      selectedOption: z
-        .string()
-        .optional()
-        .describe("Selected option ID if any"),
-      comment: z.string().optional().describe("Comment from the reviewer"),
-      resolvedBy: z.string().optional().describe("User ID who resolved"),
+      approvalId: z.string().describe("Convex ID of the approval"),
+      reviewNotes: z.string().optional().describe("Notes from the reviewer"),
     }),
+  }
+);
+
+export const rejectRequestTool = tool(
+  async (input): Promise<ToolResult<void>> => {
+    const startTime = Date.now();
+    try {
+      const client = getConvexClient();
+      await client.mutation(agentApprovalsApi.reject, {
+        id: input.approvalId as AnyId,
+        reviewNotes: input.reviewNotes,
+      });
+      return wrapToolSuccess(undefined, startTime);
+    } catch (error) {
+      return wrapToolError(error, startTime);
+    }
+  },
+  {
+    name: "reject_request",
+    description: "Rejects a pending approval request",
+    schema: z.object({
+      approvalId: z.string().describe("Convex ID of the approval"),
+      reviewNotes: z.string().optional().describe("Notes from the reviewer"),
+    }),
+  }
+);
+
+export const getApprovalStatsTool = tool(
+  async (): Promise<ToolResult<unknown>> => {
+    const startTime = Date.now();
+    try {
+      const client = getConvexClient();
+      const stats = await client.query(agentApprovalsApi.getStats, {});
+      return wrapToolSuccess(stats, startTime);
+    } catch (error) {
+      return wrapToolError(error, startTime);
+    }
+  },
+  {
+    name: "get_approval_stats",
+    description: "Gets statistics about approval requests",
+    schema: z.object({}),
   }
 );
 
@@ -155,5 +186,7 @@ export const approvalTools = [
   requestApprovalTool,
   checkApprovalTool,
   listPendingApprovalsTool,
-  resolveApprovalTool,
+  approveRequestTool,
+  rejectRequestTool,
+  getApprovalStatsTool,
 ];

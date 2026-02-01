@@ -2,7 +2,12 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { getConvexClient, api } from "./client";
 import type { ToolResult } from "../types";
-import { TaskPrioritySchema, TaskStatusSchema } from "../types";
+import {
+  TaskPrioritySchema,
+  TaskStatusSchema,
+  TriggerTypeSchema,
+  AgentTypeSchema,
+} from "../types";
 import { wrapToolError, wrapToolSuccess } from "../utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -15,13 +20,12 @@ type AnyId = any;
 const agentTasksApi = (api as any).agentTasks;
 
 const CreateTaskSchema = z.object({
-  taskType: z
-    .string()
-    .describe("Type of task (e.g., 'fetch-paper', 'analyze')"),
+  agentType: AgentTypeSchema.describe("Type of agent to run"),
+  title: z.string().describe("Task title"),
+  description: z.string().optional().describe("Task description"),
   priority: TaskPrioritySchema.describe("Task priority"),
-  payload: z.unknown().describe("Task-specific data payload"),
-  maxRetries: z.number().int().min(0).max(10).optional().default(3),
-  scheduledFor: z.number().optional().describe("Unix timestamp to execute at"),
+  triggeredBy: TriggerTypeSchema.describe("How the task was triggered"),
+  payload: z.unknown().optional().describe("Task-specific data payload"),
 });
 
 export const createAgentTaskTool = tool(
@@ -30,11 +34,12 @@ export const createAgentTaskTool = tool(
     try {
       const client = getConvexClient();
       const id = await client.mutation(agentTasksApi.create, {
-        taskType: input.taskType,
+        agentType: input.agentType,
+        title: input.title,
+        description: input.description,
         priority: input.priority,
+        triggeredBy: input.triggeredBy,
         payload: input.payload,
-        maxRetries: input.maxRetries,
-        scheduledFor: input.scheduledFor,
       });
       return wrapToolSuccess({ id: String(id) }, startTime);
     } catch (error) {
@@ -48,42 +53,38 @@ export const createAgentTaskTool = tool(
   }
 );
 
-export const getNextTaskTool = tool(
-  async (input): Promise<ToolResult<unknown>> => {
+export const listActiveTasksTool = tool(
+  async (input): Promise<ToolResult<unknown[]>> => {
     const startTime = Date.now();
     try {
       const client = getConvexClient();
-      const task = await client.query(agentTasksApi.getNextPending, {
-        taskType: input.taskType,
+      const tasks = await client.query(agentTasksApi.listActive, {
+        limit: input.limit,
       });
-      return wrapToolSuccess(task, startTime);
+      return wrapToolSuccess(tasks, startTime);
     } catch (error) {
       return wrapToolError(error, startTime);
     }
   },
   {
-    name: "get_next_agent_task",
-    description:
-      "Gets the next pending task from the queue, prioritized by priority and creation time",
+    name: "list_active_agent_tasks",
+    description: "Lists active tasks (queued, running, paused) from the queue",
     schema: z.object({
-      taskType: z.string().optional().describe("Filter by task type"),
+      limit: z.number().int().min(1).max(100).optional().default(20),
     }),
   }
 );
 
 export const updateTaskStatusTool = tool(
-  async (input): Promise<ToolResult<unknown>> => {
+  async (input): Promise<ToolResult<void>> => {
     const startTime = Date.now();
     try {
       const client = getConvexClient();
-      const task = await client.mutation(agentTasksApi.updateStatus, {
-        taskId: input.taskId as AnyId,
+      await client.mutation(agentTasksApi.updateStatus, {
+        id: input.taskId as AnyId,
         status: input.status,
-        result: input.result,
-        error: input.error,
-        assignedTo: input.assignedTo,
       });
-      return wrapToolSuccess(task, startTime);
+      return wrapToolSuccess(undefined, startTime);
     } catch (error) {
       return wrapToolError(error, startTime);
     }
@@ -94,12 +95,30 @@ export const updateTaskStatusTool = tool(
     schema: z.object({
       taskId: z.string().describe("Convex ID of the task"),
       status: TaskStatusSchema.describe("New task status"),
-      result: z.unknown().optional().describe("Task result if completed"),
-      error: z.string().optional().describe("Error message if failed"),
-      assignedTo: z
-        .string()
-        .optional()
-        .describe("Agent ID processing the task"),
+    }),
+  }
+);
+
+export const updateTaskProgressTool = tool(
+  async (input): Promise<ToolResult<void>> => {
+    const startTime = Date.now();
+    try {
+      const client = getConvexClient();
+      await client.mutation(agentTasksApi.updateProgress, {
+        id: input.taskId as AnyId,
+        progress: input.progress,
+      });
+      return wrapToolSuccess(undefined, startTime);
+    } catch (error) {
+      return wrapToolError(error, startTime);
+    }
+  },
+  {
+    name: "update_agent_task_progress",
+    description: "Updates the progress of an agent task (0-100)",
+    schema: z.object({
+      taskId: z.string().describe("Convex ID of the task"),
+      progress: z.number().min(0).max(100).describe("Progress percentage"),
     }),
   }
 );
@@ -111,7 +130,8 @@ export const listTasksTool = tool(
       const client = getConvexClient();
       const tasks = await client.query(agentTasksApi.list, {
         status: input.status,
-        taskType: input.taskType,
+        agentType: input.agentType,
+        priority: input.priority,
         limit: input.limit,
       });
       return wrapToolSuccess(tasks, startTime);
@@ -124,7 +144,8 @@ export const listTasksTool = tool(
     description: "Lists agent tasks with optional filters",
     schema: z.object({
       status: TaskStatusSchema.optional().describe("Filter by status"),
-      taskType: z.string().optional().describe("Filter by task type"),
+      agentType: AgentTypeSchema.optional().describe("Filter by agent type"),
+      priority: TaskPrioritySchema.optional().describe("Filter by priority"),
       limit: z.number().int().min(1).max(100).optional().default(20),
     }),
   }
@@ -135,8 +156,8 @@ export const getTaskTool = tool(
     const startTime = Date.now();
     try {
       const client = getConvexClient();
-      const task = await client.query(agentTasksApi.get, {
-        taskId: input.taskId as AnyId,
+      const task = await client.query(agentTasksApi.getById, {
+        id: input.taskId as AnyId,
       });
       if (!task) {
         return wrapToolError(
@@ -158,10 +179,53 @@ export const getTaskTool = tool(
   }
 );
 
+export const cancelTaskTool = tool(
+  async (input): Promise<ToolResult<void>> => {
+    const startTime = Date.now();
+    try {
+      const client = getConvexClient();
+      await client.mutation(agentTasksApi.cancel, {
+        id: input.taskId as AnyId,
+      });
+      return wrapToolSuccess(undefined, startTime);
+    } catch (error) {
+      return wrapToolError(error, startTime);
+    }
+  },
+  {
+    name: "cancel_agent_task",
+    description: "Cancels an agent task",
+    schema: z.object({
+      taskId: z.string().describe("Convex ID of the task"),
+    }),
+  }
+);
+
+export const getTaskStatsTool = tool(
+  async (): Promise<ToolResult<unknown>> => {
+    const startTime = Date.now();
+    try {
+      const client = getConvexClient();
+      const stats = await client.query(agentTasksApi.getStats, {});
+      return wrapToolSuccess(stats, startTime);
+    } catch (error) {
+      return wrapToolError(error, startTime);
+    }
+  },
+  {
+    name: "get_agent_task_stats",
+    description: "Gets statistics about agent tasks",
+    schema: z.object({}),
+  }
+);
+
 export const taskTools = [
   createAgentTaskTool,
-  getNextTaskTool,
+  listActiveTasksTool,
   updateTaskStatusTool,
+  updateTaskProgressTool,
   listTasksTool,
   getTaskTool,
+  cancelTaskTool,
+  getTaskStatsTool,
 ];

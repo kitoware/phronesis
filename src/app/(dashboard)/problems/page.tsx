@@ -34,7 +34,9 @@ interface ProblemStats {
 }
 
 export default function ProblemsPage() {
-  const problems = useQuery(api.problems.list, { limit: 20 }) as ConvexProblem[] | undefined;
+  const problems = useQuery(api.problems.list, { limit: 20 }) as
+    | ConvexProblem[]
+    | undefined;
   const stats = useQuery(api.problems.getStats) as ProblemStats | undefined;
 
   const isLoading = problems === undefined;
@@ -55,7 +57,9 @@ export default function ProblemsPage() {
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Problems</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Problems
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.total ?? 0}</div>

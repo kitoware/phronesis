@@ -63,10 +63,13 @@ import {
 
 import {
   createAgentTaskTool,
-  getNextTaskTool,
+  listActiveTasksTool,
   updateTaskStatusTool,
+  updateTaskProgressTool,
   listTasksTool,
   getTaskTool,
+  cancelTaskTool,
+  getTaskStatsTool,
   taskTools,
 } from "./tasks";
 
@@ -82,7 +85,9 @@ import {
   requestApprovalTool,
   checkApprovalTool,
   listPendingApprovalsTool,
-  resolveApprovalTool,
+  approveRequestTool,
+  rejectRequestTool,
+  getApprovalStatsTool,
   approvalTools,
 } from "./approvals";
 
@@ -129,10 +134,13 @@ export {
   listTrendsTool,
   trendTools,
   createAgentTaskTool,
-  getNextTaskTool,
+  listActiveTasksTool,
   updateTaskStatusTool,
+  updateTaskProgressTool,
   listTasksTool,
   getTaskTool,
+  cancelTaskTool,
+  getTaskStatsTool,
   taskTools,
   saveCheckpointTool,
   loadCheckpointTool,
@@ -142,7 +150,9 @@ export {
   requestApprovalTool,
   checkApprovalTool,
   listPendingApprovalsTool,
-  resolveApprovalTool,
+  approveRequestTool,
+  rejectRequestTool,
+  getApprovalStatsTool,
   approvalTools,
 };
 
