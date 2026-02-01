@@ -610,4 +610,29 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_agent_type", ["agentType"])
     .index("by_priority", ["priority"]),
+
+  // LangGraph state persistence for checkpoints
+  agentCheckpoints: defineTable({
+    threadId: v.string(),
+    checkpointId: v.string(),
+    parentCheckpointId: v.optional(v.string()),
+    state: v.any(),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_thread", ["threadId"])
+    .index("by_checkpoint", ["checkpointId"])
+    .index("by_thread_and_checkpoint", ["threadId", "checkpointId"]),
+
+  // Persistent key-value cache with TTL
+  agentCache: defineTable({
+    key: v.string(),
+    namespace: v.string(),
+    value: v.any(),
+    expiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_key", ["namespace", "key"])
+    .index("by_expires", ["expiresAt"]),
 });
