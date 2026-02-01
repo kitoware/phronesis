@@ -8,7 +8,11 @@
  * @module
  */
 
+import type * as agentApprovals from "../agentApprovals.js";
+import type * as agentCache from "../agentCache.js";
+import type * as agentCheckpoints from "../agentCheckpoints.js";
 import type * as agentRuns from "../agentRuns.js";
+import type * as agentTasks from "../agentTasks.js";
 import type * as agents_insightGeneration from "../agents/insightGeneration.js";
 import type * as agents_problemDiscovery from "../agents/problemDiscovery.js";
 import type * as agents_research from "../agents/research.js";
@@ -32,7 +36,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agentApprovals: typeof agentApprovals;
+  agentCache: typeof agentCache;
+  agentCheckpoints: typeof agentCheckpoints;
   agentRuns: typeof agentRuns;
+  agentTasks: typeof agentTasks;
   "agents/insightGeneration": typeof agents_insightGeneration;
   "agents/problemDiscovery": typeof agents_problemDiscovery;
   "agents/research": typeof agents_research;

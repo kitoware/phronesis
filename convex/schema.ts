@@ -516,4 +516,107 @@ export default defineSchema({
     .index("by_agent_type", ["agentType"])
     .index("by_status", ["status"])
     .index("by_created", ["createdAt"]),
+
+  // Task queue for agent work items
+  agentTasks: defineTable({
+    taskType: v.string(),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("normal"),
+      v.literal("high"),
+      v.literal("critical")
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    payload: v.any(),
+    result: v.optional(v.any()),
+    error: v.optional(v.string()),
+    maxRetries: v.number(),
+    retryCount: v.number(),
+    assignedTo: v.optional(v.string()),
+    scheduledFor: v.optional(v.number()),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_priority_status", ["priority", "status"])
+    .index("by_task_type", ["taskType"])
+    .index("by_scheduled", ["scheduledFor"]),
+
+  // LangGraph state persistence for checkpoints
+  agentCheckpoints: defineTable({
+    threadId: v.string(),
+    checkpointId: v.string(),
+    parentCheckpointId: v.optional(v.string()),
+    state: v.any(),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_thread", ["threadId"])
+    .index("by_checkpoint", ["checkpointId"])
+    .index("by_thread_and_checkpoint", ["threadId", "checkpointId"]),
+
+  // Human-in-the-loop approval requests
+  agentApprovals: defineTable({
+    requestId: v.string(),
+    agentRunId: v.optional(v.id("agentRuns")),
+    taskId: v.optional(v.id("agentTasks")),
+    approvalType: v.union(
+      v.literal("action"),
+      v.literal("output"),
+      v.literal("decision"),
+      v.literal("escalation")
+    ),
+    title: v.string(),
+    description: v.string(),
+    context: v.optional(v.any()),
+    options: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          label: v.string(),
+          description: v.optional(v.string()),
+        })
+      )
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("expired")
+    ),
+    resolution: v.optional(
+      v.object({
+        selectedOption: v.optional(v.string()),
+        comment: v.optional(v.string()),
+        resolvedBy: v.optional(v.string()),
+        resolvedAt: v.number(),
+      })
+    ),
+    expiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_request_id", ["requestId"])
+    .index("by_status", ["status"])
+    .index("by_agent_run", ["agentRunId"])
+    .index("by_task", ["taskId"]),
+
+  // Persistent key-value cache with TTL
+  agentCache: defineTable({
+    key: v.string(),
+    namespace: v.string(),
+    value: v.any(),
+    expiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_key", ["namespace", "key"])
+    .index("by_expires", ["expiresAt"]),
 });
