@@ -5,7 +5,7 @@
 
 import type { TrendAnalysisStateType } from "../state";
 import type { TrendForecast } from "../../tools/types";
-import { openrouter } from "../../tools/llm/openrouter";
+import { createChatCompletion, MODELS } from "../../tools/llm/openrouter";
 import { z } from "zod";
 
 // Forecast response schema
@@ -43,8 +43,8 @@ async function generateTrendForecast(
     .map((t) => `${t.date}: ${t.paperCount} papers`)
     .join("\n");
 
-  const response = await openrouter.chat({
-    model: "anthropic/claude-3.5-sonnet",
+  const response = await createChatCompletion({
+    model: MODELS.CLAUDE_3_5_SONNET,
     messages: [
       {
         role: "user",
@@ -69,7 +69,6 @@ Predict the trend direction for the next ${period}:
 Return as JSON.`,
       },
     ],
-    response_format: { type: "json_object" },
     temperature: 0.3,
   });
 

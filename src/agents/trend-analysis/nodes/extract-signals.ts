@@ -12,11 +12,8 @@ import type {
   EntitySignal,
   TemporalBin,
 } from "../../tools/types";
-import {
-  batchGenerateEmbeddings,
-  cosineSimilarity,
-} from "../../tools/embedding";
-import { openrouter } from "../../tools/llm/openrouter";
+import { batchEmbeddingsRaw, cosineSimilarity } from "../../tools/embedding";
+import { createChatCompletion, MODELS } from "../../tools/llm/openrouter";
 import { z } from "zod";
 
 // Stop words to filter out of TF-IDF
@@ -209,8 +206,8 @@ async function clusterAndLabelTopics(
     const titles = clusterPapers.map((p: Paper) => p.title).slice(0, 5);
 
     try {
-      const response = await openrouter.chat({
-        model: "anthropic/claude-3.5-sonnet",
+      const response = await createChatCompletion({
+        model: MODELS.CLAUDE_3_5_SONNET,
         messages: [
           {
             role: "user",
@@ -219,10 +216,9 @@ async function clusterAndLabelTopics(
 Paper titles:
 ${titles.map((t) => `- ${t}`).join("\n")}
 
-Respond with JSON: { "label": "...", "keywords": ["...", "..."] }`,
+Respond with JSON only: { "label": "...", "keywords": ["...", "..."] }`,
           },
         ],
-        response_format: { type: "json_object" },
         temperature: 0.2,
       });
 
@@ -277,8 +273,8 @@ async function extractEntities(papers: Paper[]): Promise<EntitySignal[]> {
     const abstracts = batch.map((p) => p.abstract).join("\n\n---\n\n");
 
     try {
-      const response = await openrouter.chat({
-        model: "anthropic/claude-3.5-sonnet",
+      const response = await createChatCompletion({
+        model: MODELS.CLAUDE_3_5_SONNET,
         messages: [
           {
             role: "user",
@@ -289,7 +285,6 @@ ${abstracts}
 Return JSON with arrays: { "methods": [...], "datasets": [...], "metrics": [...], "models": [...] }`,
           },
         ],
-        response_format: { type: "json_object" },
         temperature: 0.1,
       });
 
@@ -461,10 +456,13 @@ export async function extractSignalsNode(
     let topics: TopicSignal[] = [];
 
     try {
-      const embeddings = await batchGenerateEmbeddings(
+      const embeddingResult = await batchEmbeddingsRaw(
         papersForClustering.map((p) => p.abstract)
       );
-      topics = await clusterAndLabelTopics(papersForClustering, embeddings);
+      topics = await clusterAndLabelTopics(
+        papersForClustering,
+        embeddingResult.embeddings
+      );
     } catch (error) {
       console.error("[extract_signals] Topic clustering failed:", error);
     }

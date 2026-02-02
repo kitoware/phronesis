@@ -142,7 +142,7 @@ export async function classifyTrendsNode(
     // Compute topic-specific author count
     const topicAuthorSet = new Set<string>();
     topicPapers.forEach((p) =>
-      p.authors.forEach((a) => topicAuthorSet.add(a.name))
+      p.authors.forEach((a: { name: string }) => topicAuthorSet.add(a.name))
     );
 
     // Create topic-specific metrics
