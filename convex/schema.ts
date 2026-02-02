@@ -190,6 +190,22 @@ export default defineSchema({
   // ============================================
 
   trends: defineTable({
+    // LangGraph agent fields (Plan 6)
+    trendId: v.optional(v.string()),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("emerging"),
+        v.literal("growing"),
+        v.literal("stable"),
+        v.literal("declining"),
+        v.literal("breakthrough")
+      )
+    ),
+    keywords: v.optional(v.array(v.string())),
+
+    // Original fields
     category: v.string(),
     topic: v.string(),
     period: v.union(
@@ -206,6 +222,12 @@ export default defineSchema({
       authorCount: v.number(),
       institutionCount: v.number(),
       growthRate: v.optional(v.number()),
+      // Additional metrics from LangGraph agent
+      paperCountPrevPeriod: v.optional(v.number()),
+      momentum: v.optional(v.number()),
+      avgCitations: v.optional(v.number()),
+      crossCategoryScore: v.optional(v.number()),
+      trendScore: v.optional(v.number()),
     }),
     timeSeries: v.array(
       v.object({
@@ -216,14 +238,20 @@ export default defineSchema({
     topPapers: v.array(v.id("papers")),
     topAuthors: v.array(v.string()),
     relatedTopics: v.array(v.string()),
+    relatedTrends: v.optional(v.array(v.string())),
     forecast: v.optional(
       v.object({
-        nextPeriodEstimate: v.number(),
+        nextPeriodEstimate: v.optional(v.number()),
         confidence: v.number(),
-        trend: v.union(
-          v.literal("rising"),
-          v.literal("stable"),
-          v.literal("declining")
+        trend: v.optional(
+          v.union(
+            v.literal("rising"),
+            v.literal("stable"),
+            v.literal("declining")
+          )
+        ),
+        direction: v.optional(
+          v.union(v.literal("up"), v.literal("down"), v.literal("stable"))
         ),
       })
     ),
@@ -231,7 +259,9 @@ export default defineSchema({
   })
     .index("by_category", ["category"])
     .index("by_topic", ["topic"])
-    .index("by_period", ["period", "startDate"]),
+    .index("by_period", ["period", "startDate"])
+    .index("by_trend_id", ["trendId"])
+    .index("by_status", ["status"]),
 
   // ============================================
   // STARTUPS & PROBLEMS

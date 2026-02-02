@@ -253,3 +253,131 @@ export type TriggerType = z.infer<typeof TriggerTypeSchema>;
 export type AgentType = z.infer<typeof AgentTypeSchema>;
 export type ApprovalCategory = z.infer<typeof ApprovalCategorySchema>;
 export type ApprovalStatus = z.infer<typeof ApprovalStatusSchema>;
+
+// ============================================
+// Trend Analysis Types (Plan 6)
+// ============================================
+
+// Paper types for trend analysis
+export interface Paper {
+  id: string;
+  arxivId: string;
+  title: string;
+  abstract: string;
+  authors: { name: string; affiliations?: string[] }[];
+  categories: string[];
+  primaryCategory: string;
+  publishedDate: string;
+  citationCount?: number;
+  embedding?: number[];
+}
+
+// Trend signal types
+export interface KeywordSignal {
+  keyword: string;
+  score: number;
+  frequency: number;
+  trend: "rising" | "stable" | "falling";
+}
+
+export interface TopicSignal {
+  topicId: string;
+  label: string;
+  keywords: string[];
+  paperCount: number;
+  coherenceScore: number;
+}
+
+export interface EntitySignal {
+  entity: string;
+  type: "method" | "dataset" | "metric" | "model";
+  frequency: number;
+  papers: string[];
+}
+
+export interface TemporalBin {
+  startDate: string;
+  endDate: string;
+  paperCount: number;
+  avgCitations: number;
+  topKeywords: string[];
+}
+
+export interface TrendSignals {
+  keywords: KeywordSignal[];
+  topics: TopicSignal[];
+  entities: EntitySignal[];
+  temporalBins: TemporalBin[];
+}
+
+// Trend metrics types
+export interface TrendMetrics {
+  paperCount: number;
+  paperCountPrevPeriod: number;
+  growthRate: number;
+  momentum: number;
+  authorCount: number;
+  avgCitations: number;
+  crossCategoryScore: number;
+  trendScore: number;
+}
+
+// Trend classification types
+export type TrendStatus =
+  | "emerging"
+  | "growing"
+  | "stable"
+  | "declining"
+  | "breakthrough";
+
+export interface ClassifiedTrend {
+  id: string;
+  name: string;
+  description: string;
+  status: TrendStatus;
+  keywords: string[];
+  categories: string[];
+  metrics: TrendMetrics;
+  timeSeries: { date: string; paperCount: number }[];
+  topPapers: string[];
+  relatedTrends: string[];
+}
+
+// Forecast types
+export interface TrendForecast {
+  trendId: string;
+  direction: "up" | "down" | "stable";
+  confidence: number;
+  reasoning: string;
+  predictedGrowthRate: number;
+  timeHorizon: string;
+}
+
+// Error handling
+export interface ErrorInfo {
+  node: string;
+  error: string;
+  timestamp: Date;
+  recoverable: boolean;
+}
+
+// Processing status
+export type ProcessingStatus =
+  | "idle"
+  | "loading_papers"
+  | "extracting_signals"
+  | "computing_metrics"
+  | "classifying"
+  | "forecasting"
+  | "saving"
+  | "complete"
+  | "failed";
+
+// Progress tracking
+export interface Progress {
+  currentNode: string;
+  papersLoaded: number;
+  signalsExtracted: number;
+  trendsClassified: number;
+  forecastsGenerated: number;
+}
