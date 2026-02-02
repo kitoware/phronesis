@@ -39,7 +39,10 @@ export const list = query({
         .order("desc")
         .take(args.limit ?? 50);
     }
-    return await ctx.db.query("agentRuns").order("desc").take(args.limit ?? 50);
+    return await ctx.db
+      .query("agentRuns")
+      .order("desc")
+      .take(args.limit ?? 50);
   },
 });
 
@@ -160,6 +163,18 @@ export const cancel = mutation({
   },
 });
 
+export const updateOutput = mutation({
+  args: {
+    id: v.id("agentRuns"),
+    output: v.any(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      output: args.output,
+    });
+  },
+});
+
 export const getStats = query({
   args: {},
   handler: async (ctx) => {
@@ -186,8 +201,10 @@ export const getStats = query({
     );
     const avgDuration =
       completedRuns.length > 0
-        ? completedRuns.reduce((acc, r) => acc + (r.metrics?.duration ?? 0), 0) /
-          completedRuns.length
+        ? completedRuns.reduce(
+            (acc, r) => acc + (r.metrics?.duration ?? 0),
+            0
+          ) / completedRuns.length
         : 0;
 
     return {
