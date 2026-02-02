@@ -163,6 +163,18 @@ export const cancel = mutation({
   },
 });
 
+export const updateOutput = mutation({
+  args: {
+    id: v.id("agentRuns"),
+    output: v.any(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      output: args.output,
+    });
+  },
+});
+
 export const getStats = query({
   args: {},
   handler: async (ctx) => {
