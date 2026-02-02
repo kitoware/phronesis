@@ -154,3 +154,55 @@ export const getStats = query({
     return stats;
   },
 });
+
+/**
+ * Query papers by category with date range filter
+ * Used by trend analysis agent to fetch papers for a specific period
+ */
+export const byCategory = query({
+  args: {
+    category: v.string(),
+    startDate: v.string(),
+    endDate: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Query by primary category
+    const papers = await ctx.db
+      .query("papers")
+      .withIndex("by_primary_category", (q) =>
+        q.eq("primaryCategory", args.category)
+      )
+      .collect();
+
+    // Filter by date range
+    const filtered = papers.filter((p) => {
+      const publishedDate = p.publishedDate;
+      return publishedDate >= args.startDate && publishedDate <= args.endDate;
+    });
+
+    // Sort by published date (desc) and limit
+    return filtered
+      .sort((a, b) => b.publishedDate.localeCompare(a.publishedDate))
+      .slice(0, args.limit ?? 1000);
+  },
+});
+
+/**
+ * Get papers by category with pagination
+ */
+export const listByCategory = query({
+  args: {
+    category: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("papers")
+      .withIndex("by_primary_category", (q) =>
+        q.eq("primaryCategory", args.category)
+      )
+      .order("desc")
+      .take(args.limit ?? 20);
+  },
+});
