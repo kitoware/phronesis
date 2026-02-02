@@ -388,6 +388,24 @@ export default defineSchema({
     .index("by_signal_type", ["signalType"]),
 
   // ============================================
+  // PROBLEM CLUSTERS
+  // ============================================
+
+  problemClusters: defineTable({
+    theme: v.string(),
+    description: v.string(),
+    problemIds: v.array(v.string()),
+    size: v.number(),
+    industries: v.array(v.string()),
+    fundingStages: v.array(v.string()),
+    growthRate: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_size", ["size"])
+    .index("by_created", ["createdAt"]),
+
+  // ============================================
   // RESEARCH LINKS & SOLUTIONS
   // ============================================
 
