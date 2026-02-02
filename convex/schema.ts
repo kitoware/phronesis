@@ -116,6 +116,45 @@ export default defineSchema({
     embedding: v.array(v.float64()),
     analysisVersion: v.string(),
     analyzedAt: v.number(),
+
+    // Plan 3 additions: 5-stage LLM analysis fields
+    problemStatement: v.optional(v.string()),
+    proposedSolution: v.optional(v.string()),
+    technicalApproach: v.optional(v.string()),
+    mainResults: v.optional(v.string()),
+    contributions: v.optional(
+      v.array(
+        v.object({
+          rank: v.number(),
+          contribution: v.string(),
+          noveltyScore: v.number(),
+          evidenceStrength: v.number(),
+        })
+      )
+    ),
+    statedLimitations: v.optional(v.array(v.string())),
+    inferredWeaknesses: v.optional(v.array(v.string())),
+    reproducibilityScore: v.optional(v.number()),
+    industryApplications: v.optional(
+      v.array(
+        v.object({
+          industry: v.string(),
+          application: v.string(),
+          feasibility: v.string(),
+        })
+      )
+    ),
+    technologyReadinessLevel: v.optional(v.number()),
+    timeToCommercial: v.optional(v.string()),
+    enablingTechnologies: v.optional(v.array(v.string())),
+    summaries: v.optional(
+      v.object({
+        technical: v.string(),
+        executive: v.string(),
+        tweet: v.string(),
+        eli5: v.string(),
+      })
+    ),
   })
     .index("by_paper", ["paperId"])
     .vectorIndex("vector_insights", {
